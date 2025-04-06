@@ -1,0 +1,3 @@
+C:/Users/yousi/CLionProjects/Python-Compiler/cmake-build-debug/CMakeFiles/Python_Compiler.dir
+C:/Users/yousi/CLionProjects/Python-Compiler/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/yousi/CLionProjects/Python-Compiler/cmake-build-debug/CMakeFiles/rebuild_cache.dir
