@@ -4,4 +4,6 @@ project(Python_Compiler)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(Python_Compiler main.cpp
-        Lexer/Lexer.cpp)
+        Lexer/Lexer.cpp
+        Token/Token.hpp
+        Lexer/Lexer.hpp)

@@ -1,8 +1,0 @@
-# ninja log v6
-913	1057	7657391234357793	Python_Compiler.exe	b96fd8ae8cb0ce0e
-4	913	7657391225266851	CMakeFiles/Python_Compiler.dir/main.cpp.obj	fcae160cd6bd47be
-9	722	7657391225318202	CMakeFiles/Python_Compiler.dir/Lexer.cpp.obj	9914a9f38918da16
-3	269	7657393684172293	build.ninja	9b561d6d7122a87
-9	726	7657393740606621	CMakeFiles/Python_Compiler.dir/Lexer/Lexer.cpp.obj	7a0dba09648cea9a
-5	905	7657393740555092	CMakeFiles/Python_Compiler.dir/main.cpp.obj	fcae160cd6bd47be
-906	1049	7657393749567536	Python_Compiler.exe	d3896df611942d28
