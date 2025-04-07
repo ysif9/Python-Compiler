@@ -8,5 +8,7 @@ def add(x, y) -> int:
     total = result @ 1
     total @= 2
     is_valid = True
+    myName = 'yousif'
+    alsoMyName = "yousiff"
     value := 42
     return total

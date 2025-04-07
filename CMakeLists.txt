@@ -3,4 +3,5 @@ project(Python_Compiler)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(Python_Compiler main.cpp)
+add_executable(Python_Compiler main.cpp
+        Lexer.cpp)
