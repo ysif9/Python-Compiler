@@ -116,7 +116,7 @@ struct Token {
 };
 
 inline std::string tokenTypeToString(const TokenType type) {
-    switch(type) {
+    switch (type) {
         // Keywords
         case TokenType::TK_IF: return "if";
         case TokenType::TK_ELSE: return "else";
@@ -171,15 +171,41 @@ inline TokenCategory getTokenCategory(const TokenType type) {
     using TT = TokenType;
     switch (type) {
         // Keywords
-        case TT::TK_IF: case TT::TK_ELSE: case TT::TK_FOR: case TT::TK_WHILE:
-        case TT::TK_DEF: case TT::TK_RETURN: case TT::TK_FALSE: case TT::TK_NONE:
-        case TT::TK_TRUE: case TT::TK_AND: case TT::TK_AS: case TT::TK_ASSERT:
-        case TT::TK_ASYNC: case TT::TK_AWAIT: case TT::TK_BREAK: case TT::TK_CLASS:
-        case TT::TK_CONTINUE: case TT::TK_DEL: case TT::TK_ELIF: case TT::TK_EXCEPT:
-        case TT::TK_FINALLY: case TT::TK_FROM: case TT::TK_GLOBAL: case TT::TK_IMPORT:
-        case TT::TK_IN: case TT::TK_IS: case TT::TK_LAMBDA: case TT::TK_NONLOCAL:
-        case TT::TK_NOT: case TT::TK_OR: case TT::TK_PASS: case TT::TK_RAISE:
-        case TT::TK_TRY: case TT::TK_WITH: case TT::TK_YIELD:
+        case TT::TK_IF:
+        case TT::TK_ELSE:
+        case TT::TK_FOR:
+        case TT::TK_WHILE:
+        case TT::TK_DEF:
+        case TT::TK_RETURN:
+        case TT::TK_FALSE:
+        case TT::TK_NONE:
+        case TT::TK_TRUE:
+        case TT::TK_AND:
+        case TT::TK_AS:
+        case TT::TK_ASSERT:
+        case TT::TK_ASYNC:
+        case TT::TK_AWAIT:
+        case TT::TK_BREAK:
+        case TT::TK_CLASS:
+        case TT::TK_CONTINUE:
+        case TT::TK_DEL:
+        case TT::TK_ELIF:
+        case TT::TK_EXCEPT:
+        case TT::TK_FINALLY:
+        case TT::TK_FROM:
+        case TT::TK_GLOBAL:
+        case TT::TK_IMPORT:
+        case TT::TK_IN:
+        case TT::TK_IS:
+        case TT::TK_LAMBDA:
+        case TT::TK_NONLOCAL:
+        case TT::TK_NOT:
+        case TT::TK_OR:
+        case TT::TK_PASS:
+        case TT::TK_RAISE:
+        case TT::TK_TRY:
+        case TT::TK_WITH:
+        case TT::TK_YIELD:
             return TokenCategory::KEYWORD;
 
         // Identifiers
@@ -193,22 +219,55 @@ inline TokenCategory getTokenCategory(const TokenType type) {
             return TokenCategory::STRING;
 
         // Punctuation
-        case TT::TK_LPAREN: case TT::TK_RPAREN: case TT::TK_LBRACKET: case TT::TK_RBRACKET:
-        case TT::TK_LBRACE: case TT::TK_RBRACE: case TT::TK_COMMA: case TT::TK_SEMICOLON:
-        case TT::TK_COLON: case TT::TK_PERIOD:
+        case TT::TK_LPAREN:
+        case TT::TK_RPAREN:
+        case TT::TK_LBRACKET:
+        case TT::TK_RBRACKET:
+        case TT::TK_LBRACE:
+        case TT::TK_RBRACE:
+        case TT::TK_COMMA:
+        case TT::TK_SEMICOLON:
+        case TT::TK_COLON:
+        case TT::TK_PERIOD:
             return TokenCategory::PUNCTUATION;
 
         // Operators
-        case TT::TK_PLUS: case TT::TK_MINUS: case TT::TK_MULTIPLY: case TT::TK_DIVIDE:
-        case TT::TK_FLOORDIV: case TT::TK_FLOORDIV_ASSIGN: case TT::TK_MOD: case TT::TK_MOD_ASSIGN:
-        case TT::TK_POWER: case TT::TK_POWER_ASSIGN: case TT::TK_BIT_AND: case TT::TK_BIT_AND_ASSIGN:
-        case TT::TK_BIT_OR: case TT::TK_BIT_OR_ASSIGN: case TT::TK_BIT_XOR: case TT::TK_BIT_XOR_ASSIGN:
-        case TT::TK_BIT_NOT: case TT::TK_BIT_RIGHT_SHIFT: case TT::TK_BIT_RIGHT_SHIFT_ASSIGN:
-        case TT::TK_BIT_LEFT_SHIFT: case TT::TK_BIT_LEFT_SHIFT_ASSIGN: case TT::TK_ASSIGN:
-        case TT::TK_PLUS_ASSIGN: case TT::TK_MINUS_ASSIGN: case TT::TK_MULTIPLY_ASSIGN:
-        case TT::TK_DIVIDE_ASSIGN: case TT::TK_EQUAL: case TT::TK_NOT_EQUAL:
-        case TT::TK_GREATER: case TT::TK_LESS: case TT::TK_GREATER_EQUAL: case TT::TK_LESS_EQUAL:
-        case TT::TK_MATMUL: case TT::TK_IMATMUL: case TT::TK_WALNUT: case TT::TK_FUNC_RETURN_TYPE:
+        case TT::TK_PLUS:
+        case TT::TK_MINUS:
+        case TT::TK_MULTIPLY:
+        case TT::TK_DIVIDE:
+        case TT::TK_FLOORDIV:
+        case TT::TK_FLOORDIV_ASSIGN:
+        case TT::TK_MOD:
+        case TT::TK_MOD_ASSIGN:
+        case TT::TK_POWER:
+        case TT::TK_POWER_ASSIGN:
+        case TT::TK_BIT_AND:
+        case TT::TK_BIT_AND_ASSIGN:
+        case TT::TK_BIT_OR:
+        case TT::TK_BIT_OR_ASSIGN:
+        case TT::TK_BIT_XOR:
+        case TT::TK_BIT_XOR_ASSIGN:
+        case TT::TK_BIT_NOT:
+        case TT::TK_BIT_RIGHT_SHIFT:
+        case TT::TK_BIT_RIGHT_SHIFT_ASSIGN:
+        case TT::TK_BIT_LEFT_SHIFT:
+        case TT::TK_BIT_LEFT_SHIFT_ASSIGN:
+        case TT::TK_ASSIGN:
+        case TT::TK_PLUS_ASSIGN:
+        case TT::TK_MINUS_ASSIGN:
+        case TT::TK_MULTIPLY_ASSIGN:
+        case TT::TK_DIVIDE_ASSIGN:
+        case TT::TK_EQUAL:
+        case TT::TK_NOT_EQUAL:
+        case TT::TK_GREATER:
+        case TT::TK_LESS:
+        case TT::TK_GREATER_EQUAL:
+        case TT::TK_LESS_EQUAL:
+        case TT::TK_MATMUL:
+        case TT::TK_IMATMUL:
+        case TT::TK_WALNUT:
+        case TT::TK_FUNC_RETURN_TYPE:
             return TokenCategory::OPERATOR;
 
         case TT::TK_EOF:
@@ -218,6 +277,3 @@ inline TokenCategory getTokenCategory(const TokenType type) {
             return TokenCategory::UNKNOWN; // fallback for unknowns
     }
 }
-
-
-

@@ -35,13 +35,12 @@ int main() {
     } while (token.type != TokenType::TK_EOF);
 
     // Print tokens
-    for (const auto& t : tokens) {
+    for (const auto &t: tokens) {
         if (t.category != TokenCategory::PUNCTUATION && t.category != TokenCategory::OPERATOR) {
             std::cout << "<" << tokenTypeToString(t.type) << ", " << t.lexeme << ">" << std::endl;
         } else {
             std::cout << "<" << t.lexeme << ">" << std::endl;
         }
-
     }
 
     return 0;

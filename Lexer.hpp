@@ -10,6 +10,7 @@
 class Lexer {
 public:
     explicit Lexer(std::string input);
+
     Token nextToken();
 
 private:
@@ -20,15 +21,21 @@ private:
     std::unordered_map<std::string, TokenType> keywords;
 
     bool isAtEnd() const;
+
     char getCurrentCharacter() const;
+
     char advanceToNextCharacter();
+
     bool matchAndAdvance(char expected);
 
     void skipWhitespace();
 
     Token createToken(TokenType type, const std::string &text) const;
+
     Token handleIdentifierOrKeyword();
+
     Token handleNumeric();
+
     Token handleString();
 
     Token handleSymbol();
