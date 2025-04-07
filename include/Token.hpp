@@ -38,6 +38,21 @@ enum class TokenType {
     TK_TRY,
     TK_WITH,
     TK_YIELD,
+    TK_STR,
+    TK_INT,
+    TK_FLOAT,
+    TK_COMPLEX,
+    TK_LIST,
+    TK_TUPLE,
+    TK_RANGE,
+    TK_DICT,
+    TK_SET,
+    TK_FROZENSET,
+    TK_BOOL,
+    TK_BYTES,
+    TK_BYTEARRAY,
+    TK_MEMORYVIEW,
+    TK_NONETYPE,
     // Identifier
     TK_IDENTIFIER,
     // Constants
@@ -152,6 +167,21 @@ inline string tokenTypeToString(const TokenType type) {
         case TokenType::TK_TRY: return "try";
         case TokenType::TK_WITH: return "with";
         case TokenType::TK_YIELD: return "yield";
+        case TokenType::TK_STR: return "str";
+        case TokenType::TK_INT: return "int";
+        case TokenType::TK_FLOAT: return "float";
+        case TokenType::TK_COMPLEX: return "complex";
+        case TokenType::TK_LIST: return "list";
+        case TokenType::TK_TUPLE: return "tuple";
+        case TokenType::TK_RANGE: return "range";
+        case TokenType::TK_DICT: return "dict";
+        case TokenType::TK_SET: return "set";
+        case TokenType::TK_FROZENSET: return "frozenset";
+        case TokenType::TK_BOOL: return "bool";
+        case TokenType::TK_BYTES: return "bytes";
+        case TokenType::TK_BYTEARRAY: return "bytearray";
+        case TokenType::TK_MEMORYVIEW: return "memoryview";
+        case TokenType::TK_NONETYPE: return "NoneType";
 
         // Identifier
         case TokenType::TK_IDENTIFIER: return "identifier";
@@ -205,6 +235,19 @@ inline TokenCategory getTokenCategory(const TokenType type) {
         case TT::TK_TRY:
         case TT::TK_WITH:
         case TT::TK_YIELD:
+        case TT::TK_STR:
+        case TT::TK_COMPLEX:
+        case TT::TK_LIST:
+        case TT::TK_TUPLE:
+        case TT::TK_RANGE:
+        case TT::TK_DICT:
+        case TT::TK_SET:
+        case TT::TK_FROZENSET:
+        case TT::TK_BOOL:
+        case TT::TK_BYTES:
+        case TT::TK_BYTEARRAY:
+        case TT::TK_MEMORYVIEW:
+        case TT::TK_NONETYPE:
             return TokenCategory::KEYWORD;
 
         // Identifiers

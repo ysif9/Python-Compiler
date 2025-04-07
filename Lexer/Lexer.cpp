@@ -40,6 +40,21 @@ Lexer::Lexer(string input)
         {"try", TokenType::TK_TRY},
         {"with", TokenType::TK_WITH},
         {"yield", TokenType::TK_YIELD},
+        {"str", TokenType::TK_STR},
+        {"int", TokenType::TK_INT},
+        {"float", TokenType::TK_FLOAT},
+        {"complex", TokenType::TK_COMPLEX},
+        {"list", TokenType::TK_LIST},
+        {"tuple", TokenType::TK_TUPLE},
+        {"range", TokenType::TK_RANGE},
+        {"dict", TokenType::TK_DICT},
+        {"set", TokenType::TK_SET},
+        {"frozenset", TokenType::TK_FROZENSET},
+        {"bool", TokenType::TK_BOOL},
+        {"bytes", TokenType::TK_BYTES},
+        {"bytearray", TokenType::TK_BYTEARRAY},
+        {"memoryview", TokenType::TK_MEMORYVIEW},
+        {"NoneType", TokenType::TK_NONETYPE},
     };
 }
 
