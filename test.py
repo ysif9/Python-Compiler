@@ -5,6 +5,8 @@ def add(x, y) -> int:
     else:
         result = x - y
 
+    logic = x and y
+    logic = logic == x
     total = result @ 1
     total @= 2
     is_valid = True

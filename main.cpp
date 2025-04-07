@@ -1,31 +1,27 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <filesystem>
-#include <vector>
+#include <bits/stdc++.h>
 
-#include "Lexer/Lexer.hpp"
-#include "Token/Token.hpp"
+#include "Lexer.hpp"
+#include "Token.hpp"
+using namespace std;
 
 int main() {
-    const std::string filename = "../test.py";
+    const string filename = "../test.py";
 
     // Open the python file
-    std::ifstream file(filename);
+    ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << std::endl;
+        cerr << "Error: Could not open file " << filename << endl;
         return 1;
     }
 
     // Read the file in as String
-    std::stringstream buffer;
+    stringstream buffer;
     buffer << file.rdbuf();
-    std::string input = buffer.str();
+    string input = buffer.str();
 
     // Initialize a Lexer instance and a vector to store all tokens
     Lexer lexer(input);
-    std::vector<Token> tokens;
+    vector<Token> tokens;
 
     // Lexical analysis token by token
     Token token;
@@ -37,9 +33,9 @@ int main() {
     // Print tokens
     for (const auto &t: tokens) {
         if (t.category != TokenCategory::PUNCTUATION && t.category != TokenCategory::OPERATOR) {
-            std::cout << "<" << tokenTypeToString(t.type) << ", " << t.lexeme << ">" << std::endl;
+            cout << "<" << tokenTypeToString(t.type) << ", " << t.lexeme << ">" << endl;
         } else {
-            std::cout << "<" << t.lexeme << ">" << std::endl;
+            cout << "<" << t.lexeme << ">" << endl;
         }
     }
 

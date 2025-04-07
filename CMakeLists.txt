@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.26)
 project(Python_Compiler)
 
 set(CMAKE_CXX_STANDARD 20)
 
+include_directories(include)
+
 add_executable(Python_Compiler main.cpp
         Lexer/Lexer.cpp
-        Token/Token.hpp
-        Lexer/Lexer.hpp)
+        include/Token.hpp
+        include/Lexer.hpp)
