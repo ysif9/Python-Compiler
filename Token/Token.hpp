@@ -111,7 +111,6 @@ struct Token {
     TokenType type;
     std::string lexeme;
     int line;
-    int column;
     TokenCategory category;
 };
 

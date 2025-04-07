@@ -5,8 +5,8 @@
 #include <filesystem>
 #include <vector>
 
-#include "Lexer.hpp"
-#include "Token.hpp"
+#include "Lexer/Lexer.hpp"
+#include "Token/Token.hpp"
 
 int main() {
     const std::string filename = "../test.py";

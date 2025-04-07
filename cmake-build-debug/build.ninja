@@ -55,11 +55,11 @@ build CMakeFiles/Python_Compiler.dir/main.cpp.obj: CXX_COMPILER__Python_Compiler
   OBJECT_DIR = CMakeFiles\Python_Compiler.dir
   OBJECT_FILE_DIR = CMakeFiles\Python_Compiler.dir
 
-build CMakeFiles/Python_Compiler.dir/Lexer.cpp.obj: CXX_COMPILER__Python_Compiler_unscanned_Debug C$:/Users/yousi/CLionProjects/Python-Compiler/Lexer.cpp || cmake_object_order_depends_target_Python_Compiler
-  DEP_FILE = CMakeFiles\Python_Compiler.dir\Lexer.cpp.obj.d
+build CMakeFiles/Python_Compiler.dir/Lexer/Lexer.cpp.obj: CXX_COMPILER__Python_Compiler_unscanned_Debug C$:/Users/yousi/CLionProjects/Python-Compiler/Lexer/Lexer.cpp || cmake_object_order_depends_target_Python_Compiler
+  DEP_FILE = CMakeFiles\Python_Compiler.dir\Lexer\Lexer.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles\Python_Compiler.dir
-  OBJECT_FILE_DIR = CMakeFiles\Python_Compiler.dir
+  OBJECT_FILE_DIR = CMakeFiles\Python_Compiler.dir\Lexer
 
 
 # =============================================================================
@@ -69,7 +69,7 @@ build CMakeFiles/Python_Compiler.dir/Lexer.cpp.obj: CXX_COMPILER__Python_Compile
 #############################################
 # Link the executable Python_Compiler.exe
 
-build Python_Compiler.exe: CXX_EXECUTABLE_LINKER__Python_Compiler_Debug CMakeFiles/Python_Compiler.dir/main.cpp.obj CMakeFiles/Python_Compiler.dir/Lexer.cpp.obj
+build Python_Compiler.exe: CXX_EXECUTABLE_LINKER__Python_Compiler_Debug CMakeFiles/Python_Compiler.dir/main.cpp.obj CMakeFiles/Python_Compiler.dir/Lexer/Lexer.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\Python_Compiler.dir

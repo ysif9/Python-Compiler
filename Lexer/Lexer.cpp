@@ -2,7 +2,7 @@
 #include <cctype>
 
 Lexer::Lexer(std::string input)
-    : input(std::move(input)), pos(0), line(1), column(1) {
+    : input(std::move(input)), pos(0), line(1) {
     keywords = {
         {"if", TokenType::TK_IF},
         {"else", TokenType::TK_ELSE},
@@ -43,7 +43,7 @@ Lexer::Lexer(std::string input)
 }
 
 Token Lexer::nextToken() {
-    skipWhitespace();
+    skipWhitespaceAndComments();
 
     if (isAtEnd()) {
         return createToken(TokenType::TK_EOF, "");
@@ -77,7 +77,6 @@ char Lexer::getCurrentCharacter() const {
 char Lexer::advanceToNextCharacter() {
     const char c = input[pos];
     pos++;
-    column++;
     return c;
 }
 
@@ -85,19 +84,35 @@ bool Lexer::matchAndAdvance(const char expected) {
     if (isAtEnd() || input[pos] != expected)
         return false;
     pos++;
-    column++;
     return true;
 }
 
-void Lexer::skipWhitespace() {
-    while (!isAtEnd() && std::isspace(getCurrentCharacter())) {
-        if (getCurrentCharacter() == '\n') {
-            line++;
-            column = 0;
+void Lexer::skipWhitespaceAndComments() {
+    while (!isAtEnd()) {
+        char c = getCurrentCharacter();
+
+        if (std::isspace(c)) {
+            if (c == '\n') {
+                line++;
+            }
+            advanceToNextCharacter();
         }
-        advanceToNextCharacter();
+        else if (c == '#') {
+            skipComment();
+        }
+        else {
+            break;
+        }
     }
 }
+
+
+void Lexer::skipComment() {
+    while (!isAtEnd() && getCurrentCharacter() != '\n') {
+        advanceToNextCharacter();  // advance characters until newline
+    }
+}
+
 
 Token Lexer::handleIdentifierOrKeyword() {
     const size_t start = pos;
@@ -106,9 +121,9 @@ Token Lexer::handleIdentifierOrKeyword() {
     }
     const std::string text = input.substr(start, pos - start);
     if (keywords.contains(text)) {
-        return Token{keywords[text], text, line, column};
+        return Token{keywords[text], text, line};
     }
-    return Token{TokenType::TK_IDENTIFIER, text, line, column};
+    return Token{TokenType::TK_IDENTIFIER, text, line};
 }
 
 Token Lexer::handleNumeric() {
@@ -123,7 +138,7 @@ Token Lexer::handleNumeric() {
         }
     }
     const std::string text = input.substr(start, pos - start);
-    return Token{TokenType::TK_NUMBER, text, line, column};
+    return Token{TokenType::TK_NUMBER, text, line};
 }
 
 
@@ -140,7 +155,7 @@ Token Lexer::handleString() {
         advanceToNextCharacter();
     }
     const std::string text = input.substr(start - 1, pos - start + 1);
-    return Token{TokenType::TK_STRING, text, line, column - 1};
+    return Token{TokenType::TK_STRING, text, line};
 }
 
 Token Lexer::handleSymbol() {
@@ -276,7 +291,6 @@ Token Lexer::createToken(const TokenType type, const std::string &text) const {
         type,
         text,
         line,
-        column - static_cast<int>(text.size()),
         getTokenCategory(type)
     };
 }

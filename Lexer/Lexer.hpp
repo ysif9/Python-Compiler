@@ -4,7 +4,7 @@
 
 #include <string>
 #include <unordered_map>
-#include "Token.hpp"
+#include "../Token/Token.hpp"
 
 
 class Lexer {
@@ -17,7 +17,6 @@ private:
     std::string input;
     size_t pos;
     int line;
-    int column;
     std::unordered_map<std::string, TokenType> keywords;
 
     bool isAtEnd() const;
@@ -28,7 +27,9 @@ private:
 
     bool matchAndAdvance(char expected);
 
-    void skipWhitespace();
+    void skipWhitespaceAndComments();
+
+    void skipComment();
 
     Token createToken(TokenType type, const std::string &text) const;
 
