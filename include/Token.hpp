@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-
+using namespace std;
 enum class TokenType {
     // Keywords
     TK_IF,
@@ -109,12 +109,12 @@ enum class TokenCategory {
 
 struct Token {
     TokenType type;
-    std::string lexeme;
+    string lexeme;
     int line;
     TokenCategory category;
 };
 
-inline std::string tokenTypeToString(const TokenType type) {
+inline string tokenTypeToString(const TokenType type) {
     switch (type) {
         // Keywords
         case TokenType::TK_IF: return "if";

@@ -1,7 +1,8 @@
 #include "Lexer.hpp"
 #include <cctype>
+using namespace std;
 
-Lexer::Lexer(std::string input)
+Lexer::Lexer(string input)
     : input(std::move(input)), pos(0), line(1) {
     keywords = {
         {"if", TokenType::TK_IF},
@@ -51,11 +52,11 @@ Token Lexer::nextToken() {
 
     const char currentCharacter = getCurrentCharacter();
 
-    if (std::isalpha(currentCharacter) || currentCharacter == '_') {
+    if (isalpha(currentCharacter) || currentCharacter == '_') {
         return handleIdentifierOrKeyword();
     }
 
-    if (std::isdigit(currentCharacter)) {
+    if (isdigit(currentCharacter)) {
         return handleNumeric();
     }
 
@@ -91,7 +92,7 @@ void Lexer::skipWhitespaceAndComments() {
     while (!isAtEnd()) {
         char c = getCurrentCharacter();
 
-        if (std::isspace(c)) {
+        if (isspace(c)) {
             if (c == '\n') {
                 line++;
             }
@@ -116,46 +117,64 @@ void Lexer::skipComment() {
 
 Token Lexer::handleIdentifierOrKeyword() {
     const size_t start = pos;
-    while (!isAtEnd() && (std::isalnum(getCurrentCharacter()) || getCurrentCharacter() == '_')) {
+    while (!isAtEnd() && (isalnum(getCurrentCharacter()) || getCurrentCharacter() == '_')) {
         advanceToNextCharacter();
     }
-    const std::string text = input.substr(start, pos - start);
+    const string text = input.substr(start, pos - start);
+
     if (keywords.contains(text)) {
-        return Token{keywords[text], text, line};
+        TokenType type = keywords[text];
+        return createToken(type, text);
+    } else {
+        // It's an identifier
+        // Add it to the symbol table
+        symbolTable.insert(text);
+        // Create an identifier token
+        return createToken(TokenType::TK_IDENTIFIER, text);
     }
-    return Token{TokenType::TK_IDENTIFIER, text, line};
 }
 
 Token Lexer::handleNumeric() {
     const size_t start = pos;
-    while (!isAtEnd() && std::isdigit(getCurrentCharacter())) {
+    while (!isAtEnd() && isdigit(getCurrentCharacter())) {
         advanceToNextCharacter();
     }
     if (!isAtEnd() && getCurrentCharacter() == '.') {
-        advanceToNextCharacter();
-        while (!isAtEnd() && std::isdigit(getCurrentCharacter())) {
-            advanceToNextCharacter();
+        // Peek ahead to ensure it's a digit after the dot, not just a standalone dot
+        if (pos + 1 < input.size() && isdigit(input[pos + 1])) {
+            advanceToNextCharacter(); // Consume the dot
+            while (!isAtEnd() && isdigit(getCurrentCharacter())) {
+                advanceToNextCharacter();
+            }
         }
+        // If it's just a dot followed by non-digit, treat the preceding digits as integer
+        // and let the dot be handled as a separate token later.
     }
-    const std::string text = input.substr(start, pos - start);
-    return Token{TokenType::TK_NUMBER, text, line};
+    const string text = input.substr(start, pos - start);
+    return createToken(TokenType::TK_NUMBER, text);
 }
 
 
 Token Lexer::handleString() {
-    const char quote = advanceToNextCharacter();
+    const char quote = getCurrentCharacter();
+    advanceToNextCharacter();
     const size_t start = pos;
     while (!isAtEnd() && getCurrentCharacter() != quote) {
-        if (getCurrentCharacter() == '\\') {
+        if (getCurrentCharacter() == '\\' && pos + 1 < input.size()) {
             advanceToNextCharacter();
         }
         advanceToNextCharacter();
     }
-    if (!isAtEnd()) {
-        advanceToNextCharacter();
+
+    if (isAtEnd()) {
+        const string text = input.substr(start - 1, pos - (start - 1));
+        return createToken(TokenType::TK_UNKNOWN, text);
     }
-    const std::string text = input.substr(start - 1, pos - start + 1);
-    return Token{TokenType::TK_STRING, text, line};
+
+    advanceToNextCharacter();
+
+    const string text = input.substr(start - 1, pos - (start - 1));
+    return createToken(TokenType::TK_STRING, text);
 }
 
 Token Lexer::handleSymbol() {
@@ -280,13 +299,13 @@ Token Lexer::handleSymbol() {
             return createToken(TokenType::TK_LESS, "<");
         default:
             advanceToNextCharacter();
-            return createToken(TokenType::TK_UNKNOWN, std::string(1, currentCharacter));
+            return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
     }
-    return createToken(TokenType::TK_UNKNOWN, std::string(1, currentCharacter));
+    return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
 }
 
 
-Token Lexer::createToken(const TokenType type, const std::string &text) const {
+Token Lexer::createToken(const TokenType type, const string &text) const {
     return Token{
         type,
         text,
@@ -299,12 +318,15 @@ Token Lexer::createToken(const TokenType type, const std::string &text) const {
 Token Lexer::operatorToken(const TokenType simpleType, const TokenType assignType, const char opChar) {
     advanceToNextCharacter();
     if (matchAndAdvance('=')) {
-        std::string opStr;
+        string opStr;
         opStr.push_back(opChar);
         opStr.push_back('=');
         return createToken(assignType, opStr);
     }
-    std::string opStr;
+    string opStr;
     opStr.push_back(opChar);
     return createToken(simpleType, opStr);
+}
+const unordered_set<string>& Lexer::getSymbolTable() const {
+    return symbolTable;
 }

@@ -1,9 +1,9 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
-
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "Token.hpp"
 
 using namespace std;
@@ -14,11 +14,15 @@ public:
 
     Token nextToken();
 
+    // getter for the symbol table
+    const unordered_set<string>& getSymbolTable() const;
+
 private:
     string input;
     size_t pos;
     int line;
     unordered_map<string, TokenType> keywords;
+    unordered_set<string> symbolTable;
 
     bool isAtEnd() const;
 

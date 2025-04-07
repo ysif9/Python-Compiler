@@ -2,6 +2,7 @@
 
 #include "Lexer.hpp"
 #include "Token.hpp"
+
 using namespace std;
 
 int main() {
@@ -18,26 +19,45 @@ int main() {
     stringstream buffer;
     buffer << file.rdbuf();
     string input = buffer.str();
+    file.close();
 
     // Initialize a Lexer instance and a vector to store all tokens
     Lexer lexer(input);
     vector<Token> tokens;
 
-    // Lexical analysis token by token
     Token token;
     do {
         token = lexer.nextToken();
         tokens.push_back(token);
-    } while (token.type != TokenType::TK_EOF);
 
-    // Print tokens
-    for (const auto &t: tokens) {
-        if (t.category != TokenCategory::PUNCTUATION && t.category != TokenCategory::OPERATOR) {
-            cout << "<" << tokenTypeToString(t.type) << ", " << t.lexeme << ">" << endl;
+        if (token.type != TokenType::TK_EOF) {
+            if (token.category != TokenCategory::PUNCTUATION && token.category != TokenCategory::OPERATOR) {
+                cout << "<" << tokenTypeToString(token.type) << ", \"" << token.lexeme << "\">" << endl;
+            } else {
+                cout << "<\"" << token.lexeme << "\">" << endl;
+            }
         } else {
-            cout << "<" << t.lexeme << ">" << endl;
+            cout << "<EOF>" << endl;
+        }
+
+    } while (token.type != TokenType::TK_EOF);
+    cout << "--------------" << endl;
+
+    // --- Print the Symbol Table ---
+    cout << "\n--- Symbol Table ---" << endl;
+    const unordered_set<string>& symbols = lexer.getSymbolTable();
+
+    if (symbols.empty()) {
+        cout << "(empty)" << endl;
+    } else {
+        vector<string> sortedSymbols(symbols.begin(), symbols.end());
+        sort(sortedSymbols.begin(), sortedSymbols.end());
+
+        for (const string& symbol : sortedSymbols) {
+            cout << symbol << endl;
         }
     }
+    cout << "--------------------" << endl;
 
     return 0;
 }
