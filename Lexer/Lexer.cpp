@@ -183,6 +183,7 @@ Token Lexer::handleString() {
 
     if (isAtEnd()) {
         const string text = input.substr(start - 1, pos - (start - 1));
+        reportError("Undetermined String Literal", text);
         return createToken(TokenType::TK_UNKNOWN, text);
     }
 
@@ -314,8 +315,10 @@ Token Lexer::handleSymbol() {
             return createToken(TokenType::TK_LESS, "<");
         default:
             advanceToNextCharacter();
+            reportError("Unrecognized Symbol", string(1, currentCharacter));
             return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
     }
+    //reportError("Unkown Sypmol", string(1, currentCharacter));
     return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
 }
 
@@ -344,4 +347,10 @@ Token Lexer::operatorToken(const TokenType simpleType, const TokenType assignTyp
 }
 const unordered_set<string>& Lexer::getSymbolTable() const {
     return symbolTable;
+}
+const vector<Lexer_error>& Lexer::getErrors() const {
+    return errors;
+}
+void Lexer::reportError(const string& message, const string& lexeme) {
+    errors.push_back({message, line, lexeme});
 }

@@ -4,11 +4,23 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+
 #include "Token.hpp"
 
 using namespace std;
 
+
+struct Lexer_error {
+    string message;
+    int line;
+    string lexeme;
+};
+
 class Lexer {
+
+    vector<Lexer_error> errors;
+
 public:
     explicit Lexer(string input);
 
@@ -16,6 +28,9 @@ public:
 
     // getter for the symbol table
     const unordered_set<string>& getSymbolTable() const;
+    const vector<Lexer_error>& getErrors() const;
+
+    void reportError(const string &message, const string &lexeme);
 
 private:
     string input;

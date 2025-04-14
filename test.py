@@ -13,4 +13,13 @@ def add(x, y) -> int:
     myName = 'yousif'
     alsoMyName = "yousiff"
     value := 42
+    name@ = "BOB"
     return total
+
+def foo()
+    return "Hello
+
+$invalid = 42
+$$
+name@ = "Bob"
+number = 123abc
