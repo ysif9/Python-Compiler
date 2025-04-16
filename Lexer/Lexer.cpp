@@ -143,8 +143,10 @@ Token Lexer::handleIdentifierOrKeyword() {
     } else {
         // It's an identifier
         // Add it to the symbol table
-        if (text.size() > 79)
-            reportError("Identifier name is too long", text, 3);
+        if (text.size() > 79) {
+            reportError("Identifier name is too long", text);
+            return createToken(TokenType::TK_UNKNOWN, text);
+        }
         symbolTable.insert(text);
         // Create an identifier token
         return createToken(TokenType::TK_IDENTIFIER, text);
@@ -181,7 +183,7 @@ Token Lexer::handleString() {
         char c = getCurrentCharacter();
 
         if (c == '\n') {
-            reportError("Unterminated string literal", input.substr(start - 1, pos - (start - 1)),1);
+            reportError("Unterminated string literal", input.substr(start - 1, pos - (start - 1)));
             return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - (start - 1)));
         }
 
@@ -322,8 +324,8 @@ Token Lexer::handleSymbol() {
             return createToken(TokenType::TK_LESS, "<");
         default:
             advanceToNextCharacter();
-            reportError("Unrecognized Symbol", string(1, currentCharacter), 2);
-            return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
+            string unknown  = panicRecovery();
+            return createToken(TokenType::TK_UNKNOWN, unknown);
     }
 
     return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
@@ -359,33 +361,30 @@ const vector<Lexer_error>& Lexer::getErrors() const {
     return errors;
 }
 
-void Lexer::panicRecovery(int mode) {
-    //deals with Unclosed strings
-    //pushes to next line
-    // if(mode == 1) {
-    //     while (!isAtEnd()) {
-    //         advanceToNextCharacter();
-    //         cout << "Working 1"<< endl;
-    //         if (matchAndAdvance('\n')) {
-    //             break;
-    //         }
-    //     }
-    // }
-        //deals with unknown symbols
-        //skips them
-    // else if(mode == 2) {
-    //     // while(handleSymbol().type == TokenType::TK_UNKNOWN) {
-    //     //     advanceToNextCharacter();
-    //     //     cout << "working 2"<< endl;
-    //     // }
-    // }
+//skips unknown symbols
+string Lexer::panicRecovery() {
+    string unknown;
+    while (!isAtEnd()) {
+        char c = getCurrentCharacter();
 
-
+        // recovery points: whitespace, known starting characters
+        if (isspace(c) || isalpha(c) || isdigit(c) || c == '_' || isKnownSymbol(c)) {
+            break;
+        }
+        unknown.push_back(c);
+        advanceToNextCharacter();
     }
+    reportError("Unknown Symbols found", unknown);
+    return unknown;
+}
+bool Lexer::isKnownSymbol(char c) const {
+    static const std::string knownSymbols = "[]{}(),.:;+-*/%&|^~!=<>\"\'";
+    return knownSymbols.find(c) != std::string::npos;
+}
 
-void Lexer::reportError(const string& message, const string& lexeme, int mode) {
+
+void Lexer::reportError(const string& message, const string& lexeme) {
     errors.push_back({message, line, lexeme});
-    panicRecovery(mode);
 }
 
 

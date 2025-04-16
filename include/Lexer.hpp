@@ -30,9 +30,11 @@ public:
     const unordered_set<string>& getSymbolTable() const;
     const vector<Lexer_error>& getErrors() const;
 
-    void panicRecovery(int mode);
+    string panicRecovery();
 
-    void reportError(const string &message, const string &lexeme, int mode);
+    bool isKnownSymbol(char c) const;
+
+    void reportError(const string &message, const string &lexeme);
 
 private:
     string input;
