@@ -51,6 +51,8 @@ private:
 
     bool matchAndAdvance(char expected);
 
+    bool skipQuoteComment();
+
     void skipWhitespaceAndComments();
 
     void skipComment();

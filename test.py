@@ -22,3 +22,5 @@ ABCDEFGHIJKLMNOPQRSTUVXYZNOWIKMYABCANDIDGAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 $$£invalid = 42£
 name@ = "Bob
 number = 123abc
+"""Testing quoted comments
+multiple lines"

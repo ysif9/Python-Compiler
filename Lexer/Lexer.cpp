@@ -103,6 +103,38 @@ bool Lexer::matchAndAdvance(const char expected) {
     return true;
 }
 
+bool Lexer::skipQuoteComment() {
+    const size_t start = pos;
+    if (matchAndAdvance('"') && matchAndAdvance('"') && matchAndAdvance('"')) {
+        while (!isAtEnd()) {
+            if (getCurrentCharacter() == '"' &&
+                pos + 2 < input.size() &&
+                input[pos + 1] == '"' &&
+                input[pos + 2] == '"') {
+
+                advanceToNextCharacter(); // first "
+                advanceToNextCharacter(); // second "
+                advanceToNextCharacter(); // third "
+                return true;
+                }
+
+            if (getCurrentCharacter() == '\n') {
+                line++;
+            }
+
+            advanceToNextCharacter();
+        }
+
+        // If we reach here, the triple-quoted string was never closed
+        string unterminated = input.substr(start, pos - start);
+        reportError("Unterminated triple-quoted string", unterminated);
+        return false;
+    } else {
+        pos = start; // rollback if not actually a triple quote
+        return false;
+    }
+}
+
 void Lexer::skipWhitespaceAndComments() {
     while (!isAtEnd()) {
         char c = getCurrentCharacter();
@@ -115,6 +147,10 @@ void Lexer::skipWhitespaceAndComments() {
         }
         else if (c == '#') {
             skipComment();
+        }
+        else if (c == '"') {
+            if (!skipQuoteComment())
+                break;
         }
         else {
             break;

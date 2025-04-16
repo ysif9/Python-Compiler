@@ -192,6 +192,7 @@ inline string tokenTypeToString(const TokenType type) {
 
         // End-of-file
         case TokenType::TK_EOF: return "EOF";
+
         default: return "unknown";
     }
 }
