@@ -30,7 +30,9 @@ public:
     const unordered_set<string>& getSymbolTable() const;
     const vector<Lexer_error>& getErrors() const;
 
-    void reportError(const string &message, const string &lexeme);
+    void panicRecovery(int mode);
+
+    void reportError(const string &message, const string &lexeme, int mode);
 
 private:
     string input;

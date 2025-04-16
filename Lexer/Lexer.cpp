@@ -143,6 +143,8 @@ Token Lexer::handleIdentifierOrKeyword() {
     } else {
         // It's an identifier
         // Add it to the symbol table
+        if (text.size() > 79)
+            reportError("Identifier name is too long", text, 3);
         symbolTable.insert(text);
         // Create an identifier token
         return createToken(TokenType::TK_IDENTIFIER, text);
@@ -174,22 +176,27 @@ Token Lexer::handleString() {
     const char quote = getCurrentCharacter();
     advanceToNextCharacter();
     const size_t start = pos;
-    while (!isAtEnd() && getCurrentCharacter() != quote) {
-        if (getCurrentCharacter() == '\\' && pos + 1 < input.size()) {
-            advanceToNextCharacter();
+
+    while (!isAtEnd()) {
+        char c = getCurrentCharacter();
+
+        if (c == '\n') {
+            reportError("Unterminated string literal", input.substr(start - 1, pos - (start - 1)),1);
+            return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - (start - 1)));
         }
+
+        if (c == quote) break;
+
+        if (c == '\\' && pos + 1 < input.size()) {
+            advanceToNextCharacter(); // skip the backslash
+        }
+
         advanceToNextCharacter();
     }
 
-    if (isAtEnd()) {
-        const string text = input.substr(start - 1, pos - (start - 1));
-        reportError("Undetermined String Literal", text);
-        return createToken(TokenType::TK_UNKNOWN, text);
-    }
-
     advanceToNextCharacter();
+    const string text = input.substr(start, pos - (start - 1));
 
-    const string text = input.substr(start - 1, pos - (start - 1));
     return createToken(TokenType::TK_STRING, text);
 }
 
@@ -315,10 +322,10 @@ Token Lexer::handleSymbol() {
             return createToken(TokenType::TK_LESS, "<");
         default:
             advanceToNextCharacter();
-            reportError("Unrecognized Symbol", string(1, currentCharacter));
+            reportError("Unrecognized Symbol", string(1, currentCharacter), 2);
             return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
     }
-    //reportError("Unkown Sypmol", string(1, currentCharacter));
+
     return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
 }
 
@@ -351,6 +358,34 @@ const unordered_set<string>& Lexer::getSymbolTable() const {
 const vector<Lexer_error>& Lexer::getErrors() const {
     return errors;
 }
-void Lexer::reportError(const string& message, const string& lexeme) {
+
+void Lexer::panicRecovery(int mode) {
+    //deals with Unclosed strings
+    //pushes to next line
+    // if(mode == 1) {
+    //     while (!isAtEnd()) {
+    //         advanceToNextCharacter();
+    //         cout << "Working 1"<< endl;
+    //         if (matchAndAdvance('\n')) {
+    //             break;
+    //         }
+    //     }
+    // }
+        //deals with unknown symbols
+        //skips them
+    // else if(mode == 2) {
+    //     // while(handleSymbol().type == TokenType::TK_UNKNOWN) {
+    //     //     advanceToNextCharacter();
+    //     //     cout << "working 2"<< endl;
+    //     // }
+    // }
+
+
+    }
+
+void Lexer::reportError(const string& message, const string& lexeme, int mode) {
     errors.push_back({message, line, lexeme});
+    panicRecovery(mode);
 }
+
+
