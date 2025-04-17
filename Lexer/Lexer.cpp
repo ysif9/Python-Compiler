@@ -236,7 +236,7 @@ Token Lexer::handleString() {
         
         advanceToNextCharacter();
     }
-
+    reportError("Unterminated string literal", input.substr(start - 1, pos - start + 1));
     return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - start + 1));
 }
 
