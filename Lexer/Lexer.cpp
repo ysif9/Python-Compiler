@@ -2,8 +2,7 @@
 #include <cctype>
 #include <iostream>
 #include <vector>
-#include <algorithm> // For std::sort
-#include <set>       // For combineTypes
+#include <set>
 
 using namespace std;
 
