@@ -2,8 +2,8 @@
 #define LEXER_HPP
 
 #include <string>
+#include <vector>
 #include <unordered_map>
-#include <unordered_set>
 #include "Token.hpp"
 
 using namespace std;
@@ -14,15 +14,16 @@ public:
 
     Token nextToken();
 
-    // getter for the symbol table
-    const unordered_set<string>& getSymbolTable() const;
+    unordered_map<string, SymbolInfo>& getSymbolTable();
 
 private:
     string input;
     size_t pos;
     int line;
     unordered_map<string, TokenType> keywords;
-    unordered_set<string> symbolTable;
+
+    unordered_map<string, SymbolInfo> symbolTable;
+
 
     bool isAtEnd() const;
 
@@ -47,6 +48,10 @@ private:
     Token handleSymbol();
 
     Token operatorToken(TokenType simpleType, TokenType assignType, char opChar);
+
+    const unordered_map<string, SymbolInfo>& getSymbolTable() const;
+
+
 };
 
-#endif
+#endif // LEXER_HPP
