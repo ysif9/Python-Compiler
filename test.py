@@ -23,4 +23,11 @@ $$£invalid = 42£
 name@ = "Bob
 number = 123abc
 """Testing quoted comments
-multiple lines"
+multiple lines"""
+
+# '''hi lotfy
+# nice to meet you
+# ''"
+
+
+ikio = "2

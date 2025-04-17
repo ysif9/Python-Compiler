@@ -32,7 +32,7 @@ public:
 
     string panicRecovery();
 
-    bool isKnownSymbol(char c) const;
+    static bool isKnownSymbol(char c);
 
     void reportError(const string &message, const string &lexeme);
 
@@ -51,7 +51,7 @@ private:
 
     bool matchAndAdvance(char expected);
 
-    bool skipQuoteComment();
+    bool skipMultilineComment();
 
     void skipWhitespaceAndComments();
 

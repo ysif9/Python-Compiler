@@ -103,20 +103,22 @@ bool Lexer::matchAndAdvance(const char expected) {
     return true;
 }
 
-bool Lexer::skipQuoteComment() {
+bool Lexer::skipMultilineComment() {
     const size_t start = pos;
-    if (matchAndAdvance('"') && matchAndAdvance('"') && matchAndAdvance('"')) {
-        while (!isAtEnd()) {
-            if (getCurrentCharacter() == '"' &&
-                pos + 2 < input.size() &&
-                input[pos + 1] == '"' &&
-                input[pos + 2] == '"') {
+    const char quoteChar = getCurrentCharacter(); // Store initial quote type
 
-                advanceToNextCharacter(); // first "
-                advanceToNextCharacter(); // second "
-                advanceToNextCharacter(); // third "
+    // Check for triple quotes
+    if (matchAndAdvance(quoteChar) && matchAndAdvance(quoteChar) && matchAndAdvance(quoteChar)) {
+        while (!isAtEnd()) {
+            if (getCurrentCharacter() == quoteChar &&
+                pos + 2 < input.size() &&
+                input[pos + 1] == quoteChar &&
+                input[pos + 2] == quoteChar) {
+                advanceToNextCharacter(); // first quote
+                advanceToNextCharacter(); // second quote
+                advanceToNextCharacter(); // third quote
                 return true;
-                }
+            }
 
             if (getCurrentCharacter() == '\n') {
                 line++;
@@ -126,13 +128,13 @@ bool Lexer::skipQuoteComment() {
         }
 
         // If we reach here, the triple-quoted string was never closed
-        string unterminated = input.substr(start, pos - start);
+        const string unterminated = input.substr(start, pos - start);
         reportError("Unterminated triple-quoted string", unterminated);
         return false;
-    } else {
-        pos = start; // rollback if not actually a triple quote
-        return false;
     }
+
+    pos = start; // rollback if not a triple quote
+    return false;
 }
 
 void Lexer::skipWhitespaceAndComments() {
@@ -148,8 +150,8 @@ void Lexer::skipWhitespaceAndComments() {
         else if (c == '#') {
             skipComment();
         }
-        else if (c == '"') {
-            if (!skipQuoteComment())
+        else if (c == '"' || c == '\'') {
+            if (!skipMultilineComment())
                 break;
         }
         else {
@@ -214,28 +216,28 @@ Token Lexer::handleString() {
     const char quote = getCurrentCharacter();
     advanceToNextCharacter();
     const size_t start = pos;
-
+    
     while (!isAtEnd()) {
-        char c = getCurrentCharacter();
-
+        const char c = getCurrentCharacter();
+        
         if (c == '\n') {
-            reportError("Unterminated string literal", input.substr(start - 1, pos - (start - 1)));
-            return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - (start - 1)));
+            reportError("Unterminated string literal", input.substr(start - 1, pos - start + 1));
+            return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - start + 1));
         }
-
-        if (c == quote) break;
-
+        
+        if (c == quote) {
+            advanceToNextCharacter(); // consume closing quote
+            return createToken(TokenType::TK_STRING, input.substr(start, pos - start - 1));
+        }
+        
         if (c == '\\' && pos + 1 < input.size()) {
             advanceToNextCharacter(); // skip the backslash
         }
-
+        
         advanceToNextCharacter();
     }
 
-    advanceToNextCharacter();
-    const string text = input.substr(start, pos - (start - 1));
-
-    return createToken(TokenType::TK_STRING, text);
+    return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - start + 1));
 }
 
 Token Lexer::handleSymbol() {
@@ -413,7 +415,7 @@ string Lexer::panicRecovery() {
     reportError("Unknown Symbols found", unknown);
     return unknown;
 }
-bool Lexer::isKnownSymbol(char c) const {
+bool Lexer::isKnownSymbol(const char c) {
     static const std::string knownSymbols = "[]{}(),.:;+-*/%&|^~!=<>\"\'";
     return knownSymbols.find(c) != std::string::npos;
 }
@@ -422,5 +424,3 @@ bool Lexer::isKnownSymbol(char c) const {
 void Lexer::reportError(const string& message, const string& lexeme) {
     errors.push_back({message, line, lexeme});
 }
-
-
