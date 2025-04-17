@@ -1,5 +1,8 @@
 #include "Lexer.hpp"
 #include <cctype>
+#include <string>
+#include <unordered_map>
+
 using namespace std;
 
 Lexer::Lexer(string input)
@@ -91,6 +94,7 @@ char Lexer::getCurrentCharacter() const {
 }
 
 char Lexer::advanceToNextCharacter() {
+    if (isAtEnd()) return '\0';
     const char c = input[pos];
     pos++;
     return c;
@@ -112,23 +116,19 @@ void Lexer::skipWhitespaceAndComments() {
                 line++;
             }
             advanceToNextCharacter();
-        }
-        else if (c == '#') {
+        } else if (c == '#') {
             skipComment();
-        }
-        else {
+        } else {
             break;
         }
     }
 }
 
-
 void Lexer::skipComment() {
     while (!isAtEnd() && getCurrentCharacter() != '\n') {
-        advanceToNextCharacter();  // advance characters until newline
+        advanceToNextCharacter();
     }
 }
-
 
 Token Lexer::handleIdentifierOrKeyword() {
     const size_t start = pos;
@@ -137,17 +137,20 @@ Token Lexer::handleIdentifierOrKeyword() {
     }
     const string text = input.substr(start, pos - start);
 
-    if (keywords.contains(text)) {
-        TokenType type = keywords[text];
+    auto it = keywords.find(text);
+    if (it != keywords.end()) {
+        TokenType type = it->second;
         return createToken(type, text);
     } else {
-        // It's an identifier
-        // Add it to the symbol table
-        symbolTable.insert(text);
-        // Create an identifier token
+        if (symbolTable.find(text) == symbolTable.end()) {
+            SymbolInfo info;
+            info.name = text;
+            symbolTable[text] = info;
+        }
         return createToken(TokenType::TK_IDENTIFIER, text);
     }
 }
+
 
 Token Lexer::handleNumeric() {
     const size_t start = pos;
@@ -342,6 +345,11 @@ Token Lexer::operatorToken(const TokenType simpleType, const TokenType assignTyp
     opStr.push_back(opChar);
     return createToken(simpleType, opStr);
 }
-const unordered_set<string>& Lexer::getSymbolTable() const {
+
+unordered_map<string, SymbolInfo>& Lexer::getSymbolTable() {
+    return symbolTable;
+}
+
+const unordered_map<string, SymbolInfo>& Lexer::getSymbolTable() const {
     return symbolTable;
 }

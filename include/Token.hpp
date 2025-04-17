@@ -1,6 +1,10 @@
 #pragma once
 #include <iostream>
+#include <string> // Added for string usage in SymbolInfo
+
 using namespace std;
+
+// --- Token Types ---
 enum class TokenType {
     // Keywords
     TK_IF,
@@ -111,6 +115,7 @@ enum class TokenType {
     TK_UNKNOWN
 };
 
+
 enum class TokenCategory {
     IDENTIFIER,
     KEYWORD,
@@ -122,6 +127,7 @@ enum class TokenCategory {
     UNKNOWN
 };
 
+// --- Token Structure ---
 struct Token {
     TokenType type;
     string lexeme;
@@ -129,6 +135,15 @@ struct Token {
     TokenCategory category;
 };
 
+// --- Symbol Table  Structure ---
+struct SymbolInfo {
+    string name;
+    string type = "unknown";
+    string value = "undefined";
+};
+
+
+// --- Helper Functions ---
 inline string tokenTypeToString(const TokenType type) {
     switch (type) {
         // Keywords
@@ -167,6 +182,7 @@ inline string tokenTypeToString(const TokenType type) {
         case TokenType::TK_TRY: return "try";
         case TokenType::TK_WITH: return "with";
         case TokenType::TK_YIELD: return "yield";
+        // Built-in Types
         case TokenType::TK_STR: return "str";
         case TokenType::TK_INT: return "int";
         case TokenType::TK_FLOAT: return "float";
@@ -192,7 +208,7 @@ inline string tokenTypeToString(const TokenType type) {
 
         // End-of-file
         case TokenType::TK_EOF: return "EOF";
-        default: return "unknown";
+        default: return "operator/punctuation/unknown";
     }
 }
 
