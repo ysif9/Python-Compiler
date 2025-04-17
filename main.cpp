@@ -23,7 +23,7 @@ void analyzeSimpleAssignments(const vector<Token>& tokens, unordered_map<string,
         if (varToken.type == TokenType::TK_IDENTIFIER && isAssignment) {
             string varName = varToken.lexeme;
 
-            if (symbolTable.count(varName)) {
+            if (symbolTable.contains(varName)) {
                 string assignedType = "unknown";
                 string assignedValue = "unknown";
 
@@ -81,7 +81,11 @@ int main() {
         tokens.push_back(token);
 
         if (token.type != TokenType::TK_EOF) {
-            if (token.category != TokenCategory::PUNCTUATION && token.category != TokenCategory::OPERATOR) {
+            if (token.type == TokenType::TK_INDENT) {
+                cout << "<INDENT>" << endl;
+            } else if (token.type == TokenType::TK_DEDENT) {
+                cout << "<DEDENT>" << endl;
+            } else if (token.category != TokenCategory::PUNCTUATION && token.category != TokenCategory::OPERATOR) {
                 cout << "<" << tokenTypeToString(token.type) << ", \"" << token.lexeme << "\">" << endl;
             } else {
                 cout << "<\"" << token.lexeme << "\">" << endl;

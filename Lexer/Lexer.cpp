@@ -6,7 +6,7 @@
 using namespace std;
 
 Lexer::Lexer(string input)
-    : input(std::move(input)), pos(0), line(1) {
+    : input(std::move(input)), pos(0), line(1), currentIndent(0), atLineStart(true) {
     keywords = {
         {"if", TokenType::TK_IF},
         {"else", TokenType::TK_ELSE},
@@ -62,13 +62,73 @@ Lexer::Lexer(string input)
 }
 
 Token Lexer::nextToken() {
+    // For debugging
+    static int tokenCount = 0;
+    tokenCount++;
+
+    // If we have pending indentation tokens, return them first
+    if (!pendingTokens.empty()) {
+        Token token = pendingTokens.front();
+        pendingTokens.erase(pendingTokens.begin());
+        return token;
+    }
+    
     skipWhitespaceAndComments();
+    
+    // Re-check for pending tokens after processing indentation
+    if (!pendingTokens.empty()) {
+        Token token = pendingTokens.front();
+        pendingTokens.erase(pendingTokens.begin());
+        return token;
+    }
 
     if (isAtEnd()) {
+        // Before returning EOF, check if we need to emit DEDENT tokens
+        if (!indentStack.empty()) {
+            while (!indentStack.empty()) {
+                currentIndent = indentStack.back();
+                indentStack.pop_back();
+                pendingTokens.push_back(createToken(TokenType::TK_DEDENT, "DEDENT"));
+            }
+            
+            Token token = pendingTokens.front();
+            pendingTokens.erase(pendingTokens.begin());
+            return token;
+        }
+        
+        // Add a newline before EOF if we're not already at the start of a line
+        if (!atLineStart && currentIndent > 0) {
+            atLineStart = true;
+            
+            // Generate DEDENT tokens to get back to level 0
+            while (currentIndent > 0) {
+                if (!indentStack.empty()) {
+                    currentIndent = indentStack.back();
+                    indentStack.pop_back();
+                } else {
+                    currentIndent = 0;
+                }
+                pendingTokens.push_back(createToken(TokenType::TK_DEDENT, "DEDENT"));
+            }
+            
+            if (!pendingTokens.empty()) {
+                Token token = pendingTokens.front();
+                pendingTokens.erase(pendingTokens.begin());
+                return token;
+            }
+        }
+        
         return createToken(TokenType::TK_EOF, "");
     }
 
     const char currentCharacter = getCurrentCharacter();
+
+    // Check for comments again, in case skipWhitespaceAndComments missed it
+    // TODO: Re-check logic of skipWhitespaceAndComments, we might have to return next token every time
+    if (currentCharacter == '#') {
+        skipComment();
+        return nextToken();
+    }
 
     if (isalpha(currentCharacter) || currentCharacter == '_') {
         return handleIdentifierOrKeyword();
@@ -111,14 +171,27 @@ void Lexer::skipWhitespaceAndComments() {
     while (!isAtEnd()) {
         char c = getCurrentCharacter();
 
-        if (isspace(c)) {
-            if (c == '\n') {
-                line++;
+        if (c == ' ' || c == '\t') {
+            // Check if we're at the start of a line (for indentation)
+            if (atLineStart) {
+                processIndentation();
+                break;
             }
+            // Else skip whitespace in the middle of a line
+            advanceToNextCharacter();
+        } else if (c == '\n') {
+            line++;
+            advanceToNextCharacter();
+            atLineStart = true; // Mark that we're at the start of a new line
+        } else if (c == '\r') {
             advanceToNextCharacter();
         } else if (c == '#') {
             skipComment();
         } else {
+            // If we're at the start of a line with non-whitespace, process for indentation
+            if (atLineStart) {
+                processIndentation();
+            }
             break;
         }
     }
@@ -127,6 +200,52 @@ void Lexer::skipWhitespaceAndComments() {
 void Lexer::skipComment() {
     while (!isAtEnd() && getCurrentCharacter() != '\n') {
         advanceToNextCharacter();
+    }
+    // After a comment, check for updating new line
+    if (!isAtEnd() && getCurrentCharacter() == '\n') {
+        line++;
+        advanceToNextCharacter();
+        atLineStart = true;
+    }
+}
+
+void Lexer::processIndentation() {
+    int spaces = 0;
+
+    // Count spaces or tabs at the beginning of the line
+    while (!isAtEnd() && (getCurrentCharacter() == ' ' || getCurrentCharacter() == '\t')) {
+        const char c = getCurrentCharacter();
+        spaces += (c == '\t') ? 8 : 1;  // A tab is equivalent to 8 spaces in Python
+        advanceToNextCharacter();
+    }
+
+    // If a line is empty or a comment, ignore indentation
+    if (isAtEnd() || getCurrentCharacter() == '\n' || getCurrentCharacter() == '#') {
+        return;
+    }
+
+    atLineStart = false;
+
+    // Compare with the current indentation level
+    if (spaces > currentIndent) {
+        // Indent
+        indentStack.push_back(currentIndent);
+        currentIndent = spaces;
+        pendingTokens.push_back(createToken(TokenType::TK_INDENT, "INDENT"));
+    } else if (spaces < currentIndent) {
+        // Dedent
+        while (!indentStack.empty() && spaces < currentIndent) {
+            currentIndent = indentStack.back();
+            indentStack.pop_back();
+            pendingTokens.push_back(createToken(TokenType::TK_DEDENT, "DEDENT"));
+        }
+
+        // Ensure indentation is consistent
+        if (spaces != currentIndent) {
+            // TODO: handle inconsistent indentation (error handling)
+            // For now we just adjust to the current indentation
+            currentIndent = spaces;
+        }
     }
 }
 
@@ -139,16 +258,15 @@ Token Lexer::handleIdentifierOrKeyword() {
 
     auto it = keywords.find(text);
     if (it != keywords.end()) {
-        TokenType type = it->second;
+        const TokenType type = it->second;
         return createToken(type, text);
-    } else {
-        if (symbolTable.find(text) == symbolTable.end()) {
-            SymbolInfo info;
-            info.name = text;
-            symbolTable[text] = info;
-        }
-        return createToken(TokenType::TK_IDENTIFIER, text);
     }
+    if (!symbolTable.contains(text)) {
+        SymbolInfo info;
+        info.name = text;
+        symbolTable[text] = info;
+    }
+    return createToken(TokenType::TK_IDENTIFIER, text);
 }
 
 

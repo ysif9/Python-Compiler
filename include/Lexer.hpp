@@ -17,12 +17,19 @@ public:
     unordered_map<string, SymbolInfo>& getSymbolTable();
 
 private:
+    
     string input;
     size_t pos;
     int line;
     unordered_map<string, TokenType> keywords;
 
     unordered_map<string, SymbolInfo> symbolTable;
+    
+    // Indentation tracking
+    vector<int> indentStack;
+    int currentIndent;
+    bool atLineStart;
+    vector<Token> pendingTokens; // For storing DEDENT tokens
 
 
     bool isAtEnd() const;
@@ -37,6 +44,8 @@ private:
 
     void skipComment();
 
+    void processIndentation();
+    
     Token createToken(TokenType type, const string &text) const;
 
     Token handleIdentifierOrKeyword();

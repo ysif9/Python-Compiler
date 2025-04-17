@@ -2,6 +2,8 @@ def add(x, y) -> int:
     # This function adds two numbers
     if x > y:
         result = x + y
+        if result > 10:
+            result = 10
     else:
         result = x - y
 

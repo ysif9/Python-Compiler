@@ -110,6 +110,9 @@ enum class TokenType {
     TK_SEMICOLON,
     TK_COLON,
     TK_PERIOD,
+    // Indentation
+    TK_INDENT,
+    TK_DEDENT,
     // End-of-file
     TK_EOF,
     TK_UNKNOWN
@@ -206,6 +209,10 @@ inline string tokenTypeToString(const TokenType type) {
         case TokenType::TK_NUMBER: return "number";
         case TokenType::TK_STRING: return "string";
 
+        // Indentation
+        case TokenType::TK_INDENT: return "INDENT";
+        case TokenType::TK_DEDENT: return "DEDENT";
+        
         // End-of-file
         case TokenType::TK_EOF: return "EOF";
         default: return "operator/punctuation/unknown";
@@ -287,6 +294,8 @@ inline TokenCategory getTokenCategory(const TokenType type) {
         case TT::TK_SEMICOLON:
         case TT::TK_COLON:
         case TT::TK_PERIOD:
+        case TT::TK_INDENT:
+        case TT::TK_DEDENT:
             return TokenCategory::PUNCTUATION;
 
         // Operators
