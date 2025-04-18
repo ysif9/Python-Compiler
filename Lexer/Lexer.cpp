@@ -41,6 +41,7 @@ Token Lexer::nextToken() {
     if (!pendingTokens.empty()) {
         Token token = pendingTokens.front();
         pendingTokens.erase(pendingTokens.begin());
+        tokens.push_back(token);
         return token;
     }
 
@@ -50,6 +51,7 @@ Token Lexer::nextToken() {
     if (!pendingTokens.empty()) {
         Token token = pendingTokens.front();
         pendingTokens.erase(pendingTokens.begin());
+        tokens.push_back(token);
         return token;
     }
 
@@ -64,6 +66,7 @@ Token Lexer::nextToken() {
 
             Token token = pendingTokens.front();
             pendingTokens.erase(pendingTokens.begin());
+            tokens.push_back(token);
             return token;
         }
 
@@ -85,6 +88,7 @@ Token Lexer::nextToken() {
             if (!pendingTokens.empty()) {
                 Token token = pendingTokens.front();
                 pendingTokens.erase(pendingTokens.begin());
+                tokens.push_back(token);
                 return token;
             }
         }
