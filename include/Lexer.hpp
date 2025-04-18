@@ -25,6 +25,12 @@ private:
     unordered_map<string, TokenType> keywords;
     unordered_map<string, string> symbolTable; // Internal symbol table: <name, inferred_type_string>
 
+    // Indentation tracking
+    vector<int> indentStack;
+    int currentIndent;
+    bool atLineStart;
+    vector<Token> pendingTokens; // For storing DEDENT tokens
+
     // Helper methods
     bool isAtEnd() const;
     char getCurrentCharacter() const;
@@ -32,6 +38,7 @@ private:
     bool matchAndAdvance(char expected);
     void skipWhitespaceAndComments();
     void skipComment();
+    void processIndentation();
     Token createToken(TokenType type, const string &text) const;
 
     // Token handling methods
