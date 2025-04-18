@@ -10,13 +10,31 @@ using namespace std;
 
 // getTokenCategory is defined inline in Token.hpp, no forward declaration needed
 
+
+struct Lexer_error {
+    string message;
+    int line;
+    string lexeme;
+};
+
 class Lexer {
+
+    vector<Lexer_error> errors;
+
 public:
     explicit Lexer(string input);
     Token nextToken(); // Generates tokens one by one
     const unordered_map<string, string>& getSymbolTable(); // Gets the table *after* processing
     void processIdentifierTypes(); // Processes the generated tokens list
-    vector<Token> tokens; // Public vector to store generated tokens
+    vector<Token> tokens; // Public vector to store generated token
+
+    // getter for the symbol table
+    const vector<Lexer_error>& getErrors() const;
+    string panicRecovery();
+
+    static bool isKnownSymbol(char c);
+
+    void reportError(const string &message, const string &lexeme);
 
 private:
     string input;
@@ -33,19 +51,30 @@ private:
 
     // Helper methods
     bool isAtEnd() const;
+
     char getCurrentCharacter() const;
+
     char advanceToNextCharacter();
+
     bool matchAndAdvance(char expected);
+
+    bool skipMultilineComment();
+
     void skipWhitespaceAndComments();
+
     void skipComment();
     void processIndentation();
     Token createToken(TokenType type, const string &text) const;
 
     // Token handling methods
     Token handleIdentifierOrKeyword();
+
     Token handleNumeric();
+
     Token handleString();
+
     Token handleSymbol();
+
     Token operatorToken(TokenType simpleType, TokenType assignType, char opChar);
 
     // Type inference methods (called by processIdentifierTypes)

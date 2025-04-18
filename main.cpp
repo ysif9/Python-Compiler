@@ -87,5 +87,13 @@ int main() {
     }
     cout << "--------------------" << endl;
 
+    for (const auto& err : lexer.getErrors()) {
+        cout << "Lexical Error at line " << err.line
+                  << ": " << err.message << " -> '" << err.lexeme << "'\n";
+    }
+
+
+
+
     return 0;
 }

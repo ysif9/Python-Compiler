@@ -151,6 +151,40 @@ bool Lexer::matchAndAdvance(const char expected) {
     return true;
 }
 
+bool Lexer::skipMultilineComment() {
+    const size_t start = pos;
+    const char quoteChar = getCurrentCharacter(); // Store initial quote type
+
+    // Check for triple quotes
+    if (matchAndAdvance(quoteChar) && matchAndAdvance(quoteChar) && matchAndAdvance(quoteChar)) {
+        while (!isAtEnd()) {
+            if (getCurrentCharacter() == quoteChar &&
+                pos + 2 < input.size() &&
+                input[pos + 1] == quoteChar &&
+                input[pos + 2] == quoteChar) {
+                advanceToNextCharacter(); // first quote
+                advanceToNextCharacter(); // second quote
+                advanceToNextCharacter(); // third quote
+                return true;
+            }
+
+            if (getCurrentCharacter() == '\n') {
+                line++;
+            }
+
+            advanceToNextCharacter();
+        }
+
+        // If we reach here, the triple-quoted string was never closed
+        const string unterminated = input.substr(start, pos - start);
+        reportError("Unterminated triple-quoted string", unterminated);
+        return false;
+    }
+
+    pos = start; // rollback if not a triple quote
+    return false;
+}
+
 void Lexer::skipWhitespaceAndComments() {
     while (!isAtEnd()) {
         char c = getCurrentCharacter();
@@ -172,6 +206,10 @@ void Lexer::skipWhitespaceAndComments() {
         }
         else if (c == '#') {
             skipComment();
+        }
+        else if (c == '"' || c == '\'') {
+            if (!skipMultilineComment())
+                break;
         } else {
             // If we're at the start of a line with non-whitespace, process for indentation
             if (atLineStart) {
@@ -247,6 +285,12 @@ Token Lexer::handleIdentifierOrKeyword() {
         return createToken(keyword_it->second, text); // Return specific keyword/type token
     } else {
         // It's an identifier
+        // Add it to the symbol table
+        if (text.size() > 79) {
+            reportError("Identifier name is too long", text);
+            return createToken(TokenType::TK_UNKNOWN, text);
+        }
+        // Create an identifier token
         return createToken(TokenType::TK_IDENTIFIER, text);
     }
 }
@@ -314,36 +358,30 @@ Token Lexer::handleString() {
     // Could add 'r', 'f', 'u' handling here if needed, but they usually affect parsing/value, not base type
 
     const char quote = getCurrentCharacter();
-    if (quote != '\'' && quote != '"') {
-        // Should not happen if called correctly
-        return createToken(TokenType::TK_UNKNOWN, string(1, quote));
-    }
-    advanceToNextCharacter(); // Consume opening quote
-    const size_t start = pos; // Start of string content
+    advanceToNextCharacter();
+    const size_t start = pos;
 
     while (!isAtEnd()) {
-        char c = getCurrentCharacter();
+        const char c = getCurrentCharacter();
+
+        if (c == '\n') {
+            reportError("Unterminated string literal", input.substr(start - 1, pos - start + 1));
+            return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - start + 1));
+        }
+
         if (c == quote) {
-            break; // Found closing quote
+            advanceToNextCharacter(); // consume closing quote
+            return createToken(isBytes ? TokenType::TK_BYTES : TokenType::TK_STRING, input.substr(start, pos - start - 1));
         }
+
         if (c == '\\' && pos + 1 < input.size()) {
-            advanceToNextCharacter(); // Skip escaped char
+            advanceToNextCharacter(); // skip the backslash
         }
-        advanceToNextCharacter(); // Consume content char
+
+        advanceToNextCharacter();
     }
-
-    if (isAtEnd()) {
-        // Unterminated string
-        const string text = input.substr(start - 1 - prefix_len, pos - (start - 1 - prefix_len));
-        cerr << "Error: Unterminated string literal starting at line " << line << " text: " << text << endl;
-        return createToken(TokenType::TK_UNKNOWN, text);
-    }
-
-    const string content = input.substr(start, pos - start);
-    advanceToNextCharacter(); // Consume closing quote
-
-    // Return TK_BYTES or TK_STRING based on prefix
-    return createToken(isBytes ? TokenType::TK_BYTES : TokenType::TK_STRING, content);
+    reportError("Unterminated string literal", input.substr(start - 1, pos - start + 1));
+    return createToken(TokenType::TK_UNKNOWN, input.substr(start - 1, pos - start + 1));
 }
 
 
@@ -455,7 +493,8 @@ Token Lexer::handleSymbol() {
         default:
             // Unknown single character
             advanceToNextCharacter();
-            return createToken(TokenType::TK_UNKNOWN, string(1, currentCharacter));
+            string unknown  = panicRecovery();
+            return createToken(TokenType::TK_UNKNOWN, unknown);
     }
 }
 
@@ -487,6 +526,35 @@ Token Lexer::operatorToken(const TokenType simpleType, const TokenType assignTyp
 // Get the symbol table (const reference)
 const unordered_map<string, string>& Lexer::getSymbolTable() {
     return symbolTable;
+}
+const vector<Lexer_error>& Lexer::getErrors() const {
+    return errors;
+}
+
+//skips unknown symbols
+string Lexer::panicRecovery() {
+    string unknown;
+    while (!isAtEnd()) {
+        char c = getCurrentCharacter();
+
+        // recovery points: whitespace, known starting characters
+        if (isspace(c) || isalpha(c) || isdigit(c) || c == '_' || isKnownSymbol(c)) {
+            break;
+        }
+        unknown.push_back(c);
+        advanceToNextCharacter();
+    }
+    reportError("Unknown Symbols found", unknown);
+    return unknown;
+}
+bool Lexer::isKnownSymbol(const char c) {
+    static const std::string knownSymbols = "[]{}(),.:;+-*/%&|^~!=<>\"\'";
+    return knownSymbols.find(c) != std::string::npos;
+}
+
+
+void Lexer::reportError(const string& message, const string& lexeme) {
+    errors.push_back({message, line, lexeme});
 }
 
 // Process identifier types AFTER all tokens are generated
