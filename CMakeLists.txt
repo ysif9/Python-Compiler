@@ -8,4 +8,9 @@ include_directories(include)
 add_executable(Python_Compiler main.cpp
         Lexer/Lexer.cpp
         include/Token.hpp
-        include/Lexer.hpp)
+        include/Lexer.hpp
+        include/UtilNodes.hpp
+        include/ASTNode.hpp
+        include/Expressions.hpp
+        include/Literals.hpp
+        include/Statements.hpp)
