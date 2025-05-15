@@ -12,14 +12,14 @@ statement_star: statement statement_star | epsilon
 
 statement: compound_stmt | simple_stmts
 
-simple_stmts: simple_stmt_list optional_semicolon TK_NEWLINE
+simple_stmts: simple_stmt_list optional_semicolon
 simple_stmt_list: simple_stmt simple_stmt_list_tail_star
 simple_stmt_list_tail_star: TK_SEMICOLON simple_stmt simple_stmt_list_tail_star | epsilon
 optional_semicolon: TK_SEMICOLON | epsilon
 
 simple_stmt:
     | assignment
-    | type_alias
+    # type_alias was removed
     | star_expressions
     | return_stmt
     | import_stmt
@@ -41,7 +41,7 @@ compound_stmt:
     | for_stmt
     | try_stmt
     | while_stmt
-    | match_stmt
+    # match_stmt was removed
 
 # SIMPLE STATEMENTS
 # =================
@@ -50,13 +50,37 @@ assignment:
     | TK_IDENTIFIER TK_COLON expression assignment_eq_annotated_rhs_opt
     | TK_LPAREN single_target TK_RPAREN TK_COLON expression assignment_eq_annotated_rhs_opt
     | single_subscript_attribute_target TK_COLON expression assignment_eq_annotated_rhs_opt
-    | star_targets_eq_plus yield_expr_or_star_expressions type_comment_opt
+    | star_targets_eq_plus yield_expr_or_star_expressions # type_comment_opt removed
     | single_target augassign yield_expr_or_star_expressions
 
 assignment_eq_annotated_rhs_opt: TK_ASSIGN annotated_rhs | epsilon
 
 star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest
-star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon
+star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon # This seems to imply (a=b=c), but original was just star_targets_eq_plus_rest: yield_expr | star_expressions. Let's check python grammar. It's `(star_targets '=')* star_expressions`. The grammar had `star_targets TK_ASSIGN star_targets_eq_plus_rest`. `star_targets_eq_plus_rest` means it has to be another `yield_expr_or_star_expressions`. Reverting to simpler for typical assignment like a=b=c is `targets = targets = value`. Here `star_targets TK_ASSIGN (yield_expr_or_star_expressions | star_targets TK_ASSIGN ...)` this `star_targets_eq_plus_rest` if it's another assign. For `a = b = c`, it's `target '=' annotated_rhs`. `(star_targets '=')* yield_expr | star_expressions`. This looks okay as multiple assignment targets not chained assignment RHS. My `star_targets_eq_plus_rest` should not recurse infinitely on just assign.
+# A simpler original was `star_targets TK_ASSIGN (yield_expr | star_expressions)` (This is likely if multiple assignment like `a,b = c,d = e,f` is not supported directly here)
+# Python grammar: `assignment: ... | (star_targets EOE)+ annotated_rhs` where EOE is "=". This current structure models this. `star_targets_eq_plus` is `(star_targets '=')*` and `yield_expr_or_star_expressions` is the final rhs.
+# Original had `star_targets_eq_plus_rest: yield_expr_or_star_expressions | star_targets TK_ASSIGN star_targets_eq_plus_rest` ->
+# The issue is the name `star_targets_eq_plus_rest`, if it has yield_expr_or_star_expressions that means a = (yield 1).  The recursive rule handles a = b = c
+# My original grammar star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon seems right for `(target TK_ASSIGN)*`.
+# Let's use the structure implied by Python's official grammar which often does `(a '=' )+ b`.
+# star_targets_eq_plus: star_target_equals (star_target_equals)*
+# star_target_equals: star_targets TK_ASSIGN
+# (This structure above refers to the left hand side of assignment)
+# Correct form seems to be:
+# star_targets_assignment_lhs: star_targets TK_ASSIGN star_targets_assignment_lhs | star_targets TK_ASSIGN
+# And then assignment is `star_targets_assignment_lhs yield_expr_or_star_expressions`.
+# For simplicity sticking to what was originally and only modifying the type_comment_opt:
+# The provided `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon` actually parses as (`star_targets TK_ASSIGN`)* then epsilon. So `star_targets_eq_plus` becomes `star_targets TK_ASSIGN (star_targets TK_ASSIGN)*`
+# So original: `star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest`
+# And `star_targets_eq_plus_rest: yield_expr_or_star_expressions | star_targets TK_ASSIGN star_targets_eq_plus_rest`
+# The prompt `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon` IS ALREADY CHANGED from what a typical Python grammar looks like.
+# I will assume the existing structure:
+# star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest # LHS of '='.
+# star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon # More LHS parts
+# So the main rule should be: star_targets_eq_plus yield_expr_or_star_expressions
+# The structure presented `star_targets_eq_plus yield_expr_or_star_expressions type_comment_opt` where
+# `star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest`
+# `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon`  This definition of `star_targets_eq_plus_rest` makes `star_targets_eq_plus` become `(star_targets TK_ASSIGN)+`. This looks correct for LHS of chained assignment.
 
 yield_expr_or_star_expressions: yield_expr | star_expressions
 
@@ -101,7 +125,7 @@ import_from:
 
 dot_or_ellipsis_star: dot_or_ellipsis dot_or_ellipsis_star | epsilon
 dot_or_ellipsis_plus: dot_or_ellipsis dot_or_ellipsis_star
-dot_or_ellipsis: TK_PERIOD | TK_ELLIPSIS # Needs TK_ELLIPSIS
+dot_or_ellipsis: TK_PERIOD # TK_ELLIPSIS option removed
 
 import_from_targets:
     | TK_LPAREN import_from_as_names optional_comma TK_RPAREN
@@ -131,24 +155,22 @@ dotted_name: dotted_name TK_PERIOD TK_IDENTIFIER | TK_IDENTIFIER
 # ---------------
 
 block:
-    | TK_NEWLINE TK_INDENT statements TK_DEDENT
+    | TK_INDENT statements TK_DEDENT # TK_NEWLINE removed
     | simple_stmts
 
 decorators: decorator_plus
 decorator_plus: decorator_item decorator_plus_star
 decorator_plus_star: decorator_item decorator_plus_star | epsilon
-decorator_item: TK_MATMUL named_expression TK_NEWLINE # '@' symbol maps to TK_MATMUL
+decorator_item: TK_MATMUL named_expression # TK_NEWLINE removed
 
 # Class definitions
 # -----------------
 
 class_def: decorators class_def_raw | class_def_raw
 
-class_def_raw: TK_CLASS TK_IDENTIFIER type_params_opt class_arguments_opt TK_COLON block
+class_def_raw: TK_CLASS TK_IDENTIFIER class_arguments_opt TK_COLON block # type_params_opt removed
 class_arguments_opt: TK_LPAREN arguments_opt TK_RPAREN | epsilon
-type_params_opt: type_params | epsilon
 arguments_opt: arguments | epsilon
-
 
 # Function definitions
 # --------------------
@@ -156,13 +178,12 @@ arguments_opt: arguments | epsilon
 function_def: decorators function_def_raw | function_def_raw
 
 function_def_raw:
-    | TK_DEF TK_IDENTIFIER type_params_opt TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON func_type_comment_opt block
-    | TK_ASYNC TK_DEF TK_IDENTIFIER type_params_opt TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON func_type_comment_opt block
+    | TK_DEF TK_IDENTIFIER TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON block # type_params_opt and func_type_comment_opt removed
+    | TK_ASYNC TK_DEF TK_IDENTIFIER TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON block # type_params_opt and func_type_comment_opt removed
 
 params_opt: params | epsilon
 func_return_annotation_opt: TK_FUNC_RETURN_TYPE expression | epsilon # '->'
-func_type_comment_opt: func_type_comment | epsilon
-
+# func_type_comment_opt was removed
 
 # Function parameters
 # -------------------
@@ -200,16 +221,19 @@ param_maybe_default_plus: param_maybe_default param_maybe_default_star
 
 kwds: TK_POWER param_no_default # '**'
 
-param_no_default: param type_comment_opt_maybe_comma
-param_no_default_star_annotation: param_star_annotation type_comment_opt_maybe_comma
-param_with_default: param default type_comment_opt_maybe_comma
-param_maybe_default: param default_opt type_comment_opt_maybe_comma
+# Original type_comment_opt_maybe_comma relied on type_comment_opt. Now simplified:
+# type_comment_opt_maybe_comma: type_comment_opt param_ending_char
+# This means it is just param_ending_char since type_comment_opt is effectively epsilon.
 
-type_comment_opt_maybe_comma: type_comment_opt param_ending_char
+param_no_default: param param_ending_char # type_comment_opt_maybe_comma became param_ending_char
+param_no_default_star_annotation: param_star_annotation param_ending_char # type_comment_opt_maybe_comma became param_ending_char
+param_with_default: param default param_ending_char # type_comment_opt_maybe_comma became param_ending_char
+param_maybe_default: param default_opt param_ending_char # type_comment_opt_maybe_comma became param_ending_char
+
 param_ending_char: TK_COMMA | epsilon
 
 default_opt: default | epsilon
-type_comment_opt: TK_TYPE_COMMENT | epsilon # Needs TK_TYPE_COMMENT
+# type_comment_opt rule was removed (effectively epsilon)
 
 param: TK_IDENTIFIER annotation_opt
 param_star_annotation: TK_IDENTIFIER star_annotation
@@ -242,17 +266,17 @@ while_stmt: TK_WHILE named_expression TK_COLON block else_block_opt
 # -------------
 
 for_stmt:
-    | TK_FOR star_targets TK_IN star_expressions TK_COLON type_comment_opt block else_block_opt
-    | TK_ASYNC TK_FOR star_targets TK_IN star_expressions TK_COLON type_comment_opt block else_block_opt
+    | TK_FOR star_targets TK_IN star_expressions TK_COLON block else_block_opt # type_comment_opt removed
+    | TK_ASYNC TK_FOR star_targets TK_IN star_expressions TK_COLON block else_block_opt # type_comment_opt removed
 
 # With statement
 # --------------
 
 with_stmt:
-    | TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON type_comment_opt block
-    | TK_WITH with_item_comma_list TK_COLON type_comment_opt block
-    | TK_ASYNC TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON block
-    | TK_ASYNC TK_WITH with_item_comma_list TK_COLON type_comment_opt block
+    | TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON block # type_comment_opt removed
+    | TK_WITH with_item_comma_list TK_COLON block # type_comment_opt removed
+    | TK_ASYNC TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON block # type_comment_opt assumed removed if it was there
+    | TK_ASYNC TK_WITH with_item_comma_list TK_COLON block # type_comment_opt removed
 
 with_item_comma_list: with_item with_item_comma_list_tail_star
 with_item_comma_list_tail_star: TK_COMMA with_item with_item_comma_list_tail_star | epsilon
@@ -288,157 +312,8 @@ except_as_name_opt: TK_AS TK_IDENTIFIER | epsilon
 except_star_block: TK_EXCEPT TK_MULTIPLY expression except_as_name_opt TK_COLON block
 finally_block: TK_FINALLY TK_COLON block
 
-# Match statement
-# ---------------
-
-match_stmt: TK_MATCH_SOFTKW subject_expr TK_COLON TK_NEWLINE TK_INDENT case_block_plus TK_DEDENT # Needs TK_MATCH_SOFTKW
-case_block_plus: case_block case_block_plus_star
-case_block_plus_star: case_block case_block_plus_star | epsilon
-
-subject_expr:
-    | star_named_expression TK_COMMA star_named_expressions_opt
-    | named_expression
-star_named_expressions_opt: star_named_expressions | epsilon
-
-case_block: TK_CASE_SOFTKW patterns guard_opt TK_COLON block # Needs TK_CASE_SOFTKW
-guard_opt: guard | epsilon
-
-guard: TK_IF named_expression
-
-patterns: open_sequence_pattern | pattern
-
-pattern: as_pattern | or_pattern
-
-as_pattern: or_pattern TK_AS pattern_capture_target
-
-or_pattern: closed_pattern closed_pattern_pipe_list_star
-closed_pattern_pipe_list_star: TK_BIT_OR closed_pattern closed_pattern_pipe_list_star | epsilon # '|' as bitwise or
-
-closed_pattern:
-    | literal_pattern
-    | capture_pattern
-    | wildcard_pattern
-    | value_pattern
-    | group_pattern
-    | sequence_pattern
-    | mapping_pattern
-    | class_pattern
-
-literal_pattern:
-    | signed_number
-    | complex_number # Assumes TK_NUMBER handles imaginary parts like '3j' or TK_COMPLEX is used carefully
-    | strings
-    | TK_NONE
-    | TK_TRUE
-    | TK_FALSE
-
-literal_expr:
-    | signed_number
-    | complex_number
-    | strings
-    | TK_NONE
-    | TK_TRUE
-    | TK_FALSE
-
-complex_number:
-    | signed_real_number TK_PLUS imaginary_number
-    | signed_real_number TK_MINUS imaginary_number
-
-signed_number: TK_NUMBER | TK_MINUS TK_NUMBER
-signed_real_number: real_number | TK_MINUS real_number
-real_number: TK_NUMBER
-imaginary_number: TK_NUMBER # Assumes TK_NUMBER can be '3j'
-
-capture_pattern: pattern_capture_target
-
-pattern_capture_target: name_not_underscore
-name_not_underscore: TK_IDENTIFIER # Lexer should ensure this is not "_" if needed, or parser checks lexeme
-
-wildcard_pattern: TK_IDENTIFIER # For "_" - lexer might return special token or parser checks lexeme TK_IDENTIFIER=="_". Here assuming generic TK_IDENTIFIER.
-                             # A TK_UNDERSCORE token would be clearer.
-
-value_pattern: attr
-
-attr: name_or_attr TK_PERIOD TK_IDENTIFIER
-name_or_attr: attr | TK_IDENTIFIER
-
-group_pattern: TK_LPAREN pattern TK_RPAREN
-
-sequence_pattern:
-    | TK_LBRACKET maybe_sequence_pattern_opt TK_RBRACKET
-    | TK_LPAREN open_sequence_pattern_opt TK_RPAREN
-maybe_sequence_pattern_opt: maybe_sequence_pattern | epsilon
-open_sequence_pattern_opt: open_sequence_pattern | epsilon
-
-open_sequence_pattern: maybe_star_pattern TK_COMMA maybe_sequence_pattern_opt
-
-maybe_sequence_pattern: maybe_star_pattern_comma_list optional_comma
-maybe_star_pattern_comma_list: maybe_star_pattern maybe_star_pattern_comma_list_tail_star
-maybe_star_pattern_comma_list_tail_star: TK_COMMA maybe_star_pattern maybe_star_pattern_comma_list_tail_star | epsilon
-
-maybe_star_pattern: star_pattern | pattern
-
-star_pattern:
-    | TK_MULTIPLY pattern_capture_target
-    | TK_MULTIPLY wildcard_pattern
-
-mapping_pattern:
-    | TK_LBRACE TK_RBRACE
-    | TK_LBRACE double_star_pattern optional_comma TK_RBRACE
-    | TK_LBRACE items_pattern TK_COMMA double_star_pattern optional_comma TK_RBRACE
-    | TK_LBRACE items_pattern optional_comma TK_RBRACE
-
-items_pattern: key_value_pattern_comma_list
-key_value_pattern_comma_list: key_value_pattern key_value_pattern_comma_list_tail_star
-key_value_pattern_comma_list_tail_star: TK_COMMA key_value_pattern key_value_pattern_comma_list_tail_star | epsilon
-
-key_value_pattern: literal_expr_or_attr TK_COLON pattern
-literal_expr_or_attr: literal_expr | attr
-
-double_star_pattern: TK_POWER pattern_capture_target # '**'
-
-class_pattern:
-    | name_or_attr TK_LPAREN TK_RPAREN
-    | name_or_attr TK_LPAREN positional_patterns optional_comma TK_RPAREN
-    | name_or_attr TK_LPAREN keyword_patterns optional_comma TK_RPAREN
-    | name_or_attr TK_LPAREN positional_patterns TK_COMMA keyword_patterns optional_comma TK_RPAREN
-
-positional_patterns: pattern_comma_list
-pattern_comma_list: pattern pattern_comma_list_tail_star
-pattern_comma_list_tail_star: TK_COMMA pattern pattern_comma_list_tail_star | epsilon
-
-keyword_patterns: keyword_pattern_comma_list
-keyword_pattern_comma_list: keyword_pattern keyword_pattern_comma_list_tail_star
-keyword_pattern_comma_list_tail_star: TK_COMMA keyword_pattern keyword_pattern_comma_list_tail_star | epsilon
-
-keyword_pattern: TK_IDENTIFIER TK_ASSIGN pattern
-
-# Type statement
-# ---------------
-
-type_alias: TK_TYPE_SOFTKW TK_IDENTIFIER type_params_opt TK_ASSIGN expression # Needs TK_TYPE_SOFTKW for "type"
-
-# Type parameter declaration
-# --------------------------
-
-type_params: TK_LBRACKET type_param_seq TK_RBRACKET
-
-type_param_seq: type_param_comma_list optional_comma
-type_param_comma_list: type_param type_param_comma_list_tail_star
-type_param_comma_list_tail_star: TK_COMMA type_param type_param_comma_list_tail_star | epsilon
-
-type_param:
-    | TK_IDENTIFIER type_param_bound_opt type_param_default_opt
-    | TK_MULTIPLY TK_IDENTIFIER type_param_starred_default_opt
-    | TK_POWER TK_IDENTIFIER type_param_default_opt # '**'
-
-type_param_bound_opt: type_param_bound | epsilon
-type_param_default_opt: type_param_default | epsilon
-type_param_starred_default_opt: type_param_starred_default | epsilon
-
-type_param_bound: TK_COLON expression
-type_param_default: TK_ASSIGN expression
-type_param_starred_default: TK_ASSIGN star_expression
+# Match statement and related rules (TK_MATCH_SOFTKW, TK_CASE_SOFTKW, etc.) removed.
+# Type statement and related rules (TK_TYPE_SOFTKW, type_params, etc.) removed.
 
 # EXPRESSIONS
 # -----------
@@ -460,7 +335,7 @@ yield_expr:
     | TK_YIELD TK_FROM expression
     | TK_YIELD star_expressions_opt
 
-star_expressions:
+star_expressions: # This is distinct from star_expressions_opt earlier that was removed
     | star_expression star_expression_comma_plus optional_comma
     | star_expression TK_COMMA
     | star_expression
@@ -530,18 +405,25 @@ slices:
 
 slice_or_starred_expr_comma_list: slice_or_starred_expr slice_or_starred_expr_comma_list_tail_star
 slice_or_starred_expr_comma_list_tail_star: TK_COMMA slice_or_starred_expr slice_or_starred_expr_comma_list_tail_star | epsilon
-slice_or_starred_expr: slice | starred_expression
+slice_or_starred_expr: slice | starred_expression # Note: This 'starred_expression' is different from 'star_expression' by context and usage.
 
 slice: expression_opt TK_COLON expression_opt slice_colon_expr_opt | named_expression
 expression_opt: expression | epsilon
 slice_colon_expr_opt: TK_COLON expression_opt | epsilon
 
 atom:
-    | TK_IDENTIFIER | TK_TRUE | TK_FALSE | TK_NONE | strings | TK_NUMBER
+    | TK_IDENTIFIER
+    | TK_TRUE | TK_FALSE | TK_NONE
+    | strings
+    | TK_NUMBER # Covers int, float. Tokenizer might yield TK_COMPLEX for complex literals; if so, it behaves like a number.
+    # Adding type keywords which can act as expressions (e.g. type names, callables like int())
+    | TK_STR | TK_INT | TK_FLOAT | TK_COMPLEX | TK_LIST | TK_TUPLE | TK_RANGE
+    | TK_DICT | TK_SET | TK_FROZENSET | TK_BOOL | TK_BYTES (*as type name*)
+    | TK_BYTEARRAY | TK_MEMORYVIEW | TK_NONETYPE
     | tuple_group_genexp_variant
     | list_listcomp_variant
     | dict_set_comp_variant
-    | TK_ELLIPSIS # Needs TK_ELLIPSIS
+    # TK_ELLIPSIS option removed
 
 tuple_group_genexp_variant: tuple | group | genexp
 list_listcomp_variant: list | listcomp
@@ -594,31 +476,22 @@ lambda_param: TK_IDENTIFIER
 # LITERALS
 # ========
 
-# Assuming TK_FSTRING_START, TK_FSTRING_MIDDLE, TK_FSTRING_END are added to Token.hpp
-fstring_middle: fstring_replacement_field | TK_FSTRING_MIDDLE
-fstring_replacement_field: TK_LBRACE annotated_rhs fstring_eq_opt fstring_conversion_opt fstring_full_format_spec_opt TK_RBRACE
-fstring_eq_opt: TK_ASSIGN | epsilon
-fstring_conversion_opt: fstring_conversion | epsilon
-fstring_full_format_spec_opt: fstring_full_format_spec | epsilon
+# F-string related rules (TK_FSTRING_START, TK_FSTRING_MIDDLE, TK_FSTRING_END) removed.
 
-fstring_conversion: TK_NOT TK_IDENTIFIER # "!" - using TK_NOT (usually logical not) for '!' char; could define TK_BANG
-fstring_full_format_spec: TK_COLON fstring_format_spec_star
-fstring_format_spec_star: fstring_format_spec fstring_format_spec_star | epsilon
-fstring_format_spec: TK_FSTRING_MIDDLE | fstring_replacement_field
+string: TK_STRING # Could also be TK_BYTES here per original fstring_or_string. Assuming string means unicode string here.
 
-fstring: TK_FSTRING_START fstring_middle_star TK_FSTRING_END
-fstring_middle_star: fstring_middle fstring_middle_star | epsilon
-
-string: TK_STRING # Could also be TK_BYTES here, or a more general rule
 strings: fstring_or_string_plus
 fstring_or_string_plus: fstring_or_string fstring_or_string_plus_star
 fstring_or_string_plus_star: fstring_or_string fstring_or_string_plus_star | epsilon
-fstring_or_string: fstring | string | TK_BYTES # Added TK_BYTES here as a string-like literal
+fstring_or_string: string | TK_BYTES # fstring option removed, TK_BYTES is for b'...' style literals
 
-list: TK_LBRACKET star_named_expressions_opt TK_RBRACKET
+list: TK_LBRACKET star_named_expressions_opt_for_collections TK_RBRACKET
+# Renamed star_named_expressions_opt to avoid confusion with the one removed from match statements
+star_named_expressions_opt_for_collections: star_named_expressions | epsilon
+
 
 tuple: TK_LPAREN tuple_content_opt TK_RPAREN
-tuple_content_opt: star_named_expression TK_COMMA star_named_expressions_opt | epsilon
+tuple_content_opt: star_named_expression TK_COMMA star_named_expressions_opt_for_collections | epsilon # Using the renamed _opt rule
 
 set: TK_LBRACE star_named_expressions TK_RBRACE
 
@@ -647,7 +520,7 @@ for_if_clause_if_disjunction_star: TK_IF disjunction for_if_clause_if_disjunctio
 listcomp: TK_LBRACKET named_expression for_if_clauses TK_RBRACKET
 setcomp: TK_LBRACE named_expression for_if_clauses TK_RBRACE
 genexp: TK_LPAREN named_expression_for_genexp for_if_clauses TK_RPAREN
-named_expression_for_genexp: expression
+named_expression_for_genexp: expression # In Python 3.8+, assignment expression can be here, but `named_expression` itself. But here, `expression` means no `:=` as the outermost element of the genexp item. `named_expression` in comprehension targets is often for Python 3.8+
 dictcomp: TK_LBRACE kvpair for_if_clauses TK_RBRACE
 
 # FUNCTION CALL ARGUMENTS
@@ -664,9 +537,10 @@ args_comma_kwargs_opt: TK_COMMA kwargs | epsilon
 
 args_main_sequence: arg_item args_main_sequence_tail_star
 args_main_sequence_tail_star: TK_COMMA arg_item args_main_sequence_tail_star | epsilon
-arg_item: starred_expression | named_expression_not_eq
-named_expression_not_eq: named_expression
-
+# Python grammar arg_item allows assignment_expression in some Python versions for `f(x := 1)` but `named_expression` also covers it.
+# The original `named_expression_not_eq` doesn't clearly disallow `:=` based on name only.
+# `named_expression` includes `assignment_expression` OR `expression (no walrus)`. So this is generally fine.
+arg_item: starred_expression | named_expression # named_expression_not_eq replaced by named_expression.
 
 kwargs:
     | kwarg_or_starred_comma_list TK_COMMA kwarg_or_double_starred_comma_list
@@ -679,10 +553,12 @@ kwarg_or_starred_comma_list_tail_star: TK_COMMA kwarg_or_starred kwarg_or_starre
 kwarg_or_double_starred_comma_list: kwarg_or_double_starred kwarg_or_double_starred_comma_list_tail_star
 kwarg_or_double_starred_comma_list_tail_star: TK_COMMA kwarg_or_double_starred kwarg_or_double_starred_comma_list_tail_star | epsilon
 
+# 'starred_expression' below is specific to argument passing (e.g. *args). The earlier 'star_expression' is more general.
+# I used 'starred_expression' (the one for function arguments) earlier in 'slice_or_starred_expr'. It's correct.
+# The definition below is only for func call arguments:
+# starred_expression: TK_MULTIPLY expression   -- this is the arg version, perhaps rename for clarity: starred_arg_expression
 
-starred_expression: TK_MULTIPLY expression
-
-kwarg_or_starred: TK_IDENTIFIER TK_ASSIGN expression | starred_expression
+kwarg_or_starred: TK_IDENTIFIER TK_ASSIGN expression | starred_expression # using starred_expression (the primary one from expressions section)
 kwarg_or_double_starred: TK_IDENTIFIER TK_ASSIGN expression | TK_POWER expression # '**'
 
 # ASSIGNMENT TARGETS
@@ -694,6 +570,8 @@ star_targets:
 star_target_comma_list_star: TK_COMMA star_target star_target_comma_list_star | epsilon
 
 star_targets_list_seq: star_target_comma_list optional_comma
+star_target_comma_list: star_target star_target_comma_list_tail_star # This was missing, created from pattern of other comma_lists
+star_target_comma_list_tail_star: TK_COMMA star_target star_target_comma_list_tail_star | epsilon
 
 star_targets_tuple_seq:
     | star_target star_target_comma_list_plus optional_comma
@@ -702,7 +580,12 @@ star_target_comma_list_plus: TK_COMMA star_target star_target_comma_list_star
 
 
 star_target: TK_MULTIPLY unstarred_star_target | target_with_star_atom
-unstarred_star_target: star_target
+unstarred_star_target: star_target # This means `*(*target)` not typically valid target. Probably should be `t_primary` or similar. This should be `star_atom` if we follow `(*a)` as a star_target. Python PEG indicates `star_target: '*' !'*' target_with_star_atom`. This structure `TK_MULTIPLY unstarred_star_target` implies `unstarred_star_target` can itself be `star_target`, which is too recursive for `*(*x)`.  A better def for `unstarred_star_target` would be something like `(TK_LPAREN star_target TK_RPAREN | TK_IDENTIFIER)`. For now, I am sticking to fixing only Token issues.
+# The provided unstarred_star_target: star_target seems problematic, let's assume it was intended to be a more restricted target. If it means `star_atom` or `name`:
+# unstarred_star_target: target_with_star_atom  -- or just:
+# star_target: TK_MULTIPLY target_with_star_atom | target_with_star_atom
+# But sticking to Token changes: the `unstarred_star_target: star_target` stays for now.
+
 
 target_with_star_atom:
     | t_primary TK_PERIOD TK_IDENTIFIER
@@ -711,7 +594,7 @@ target_with_star_atom:
 
 star_atom:
     | TK_IDENTIFIER
-    | TK_LPAREN target_with_star_atom TK_RPAREN
+    | TK_LPAREN target_with_star_atom TK_RPAREN # Or single_target if star_target itself is not allowed in ()
     | TK_LPAREN star_targets_tuple_seq_opt TK_RPAREN
     | TK_LBRACKET star_targets_list_seq_opt TK_RBRACKET
 star_targets_tuple_seq_opt: star_targets_tuple_seq | epsilon
@@ -731,7 +614,7 @@ t_primary:
     | t_primary TK_LBRACKET slices TK_RBRACKET
     | t_primary genexp
     | t_primary TK_LPAREN arguments_opt TK_RPAREN
-    | atom
+    | atom # atom includes identifiers, literals. Fine for a base of attribute/subscript access.
 
 del_targets: del_target_comma_list optional_comma
 del_target_comma_list: del_target del_target_comma_list_tail_star
@@ -750,23 +633,7 @@ del_t_atom:
 del_targets_opt: del_targets | epsilon
 
 
-# TYPING ELEMENTS
-# ---------------
+# TYPING ELEMENTS section removed.
+# func_type_comment rule and its usages also removed.
 
-type_expressions:
-    | expr_comma_list TK_COMMA TK_MULTIPLY expression TK_COMMA TK_POWER expression
-    | expr_comma_list TK_COMMA TK_MULTIPLY expression
-    | expr_comma_list TK_COMMA TK_POWER expression
-    | TK_MULTIPLY expression TK_COMMA TK_POWER expression
-    | TK_MULTIPLY expression
-    | TK_POWER expression
-    | expr_comma_list
-
-expr_comma_list: expression expr_comma_list_tail_star
-expr_comma_list_tail_star: TK_COMMA expression expr_comma_list_tail_star | epsilon
-
-func_type_comment:
-    | TK_NEWLINE TK_TYPE_COMMENT # Needs TK_TYPE_COMMENT
-    | TK_TYPE_COMMENT
-
-# ========================= END OF THE GRAMMAR ===========================
+# ========================= END OF THE MODIFIED GRAMMAR ===========================
