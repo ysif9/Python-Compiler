@@ -13,4 +13,5 @@ add_executable(Python_Compiler main.cpp
         include/ASTNode.hpp
         include/Expressions.hpp
         include/Literals.hpp
-        include/Statements.hpp)
+        include/Statements.hpp
+        include/Helpers.hpp)

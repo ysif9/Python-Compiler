@@ -19,7 +19,6 @@ optional_semicolon: TK_SEMICOLON | epsilon
 
 simple_stmt:
     | assignment
-    # type_alias was removed
     | star_expressions
     | return_stmt
     | import_stmt
@@ -41,7 +40,6 @@ compound_stmt:
     | for_stmt
     | try_stmt
     | while_stmt
-    # match_stmt was removed
 
 # SIMPLE STATEMENTS
 # =================
@@ -57,30 +55,7 @@ assignment_eq_annotated_rhs_opt: TK_ASSIGN annotated_rhs | epsilon
 
 star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest
 star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon # This seems to imply (a=b=c), but original was just star_targets_eq_plus_rest: yield_expr | star_expressions. Let's check python grammar. It's `(star_targets '=')* star_expressions`. The grammar had `star_targets TK_ASSIGN star_targets_eq_plus_rest`. `star_targets_eq_plus_rest` means it has to be another `yield_expr_or_star_expressions`. Reverting to simpler for typical assignment like a=b=c is `targets = targets = value`. Here `star_targets TK_ASSIGN (yield_expr_or_star_expressions | star_targets TK_ASSIGN ...)` this `star_targets_eq_plus_rest` if it's another assign. For `a = b = c`, it's `target '=' annotated_rhs`. `(star_targets '=')* yield_expr | star_expressions`. This looks okay as multiple assignment targets not chained assignment RHS. My `star_targets_eq_plus_rest` should not recurse infinitely on just assign.
-# A simpler original was `star_targets TK_ASSIGN (yield_expr | star_expressions)` (This is likely if multiple assignment like `a,b = c,d = e,f` is not supported directly here)
-# Python grammar: `assignment: ... | (star_targets EOE)+ annotated_rhs` where EOE is "=". This current structure models this. `star_targets_eq_plus` is `(star_targets '=')*` and `yield_expr_or_star_expressions` is the final rhs.
-# Original had `star_targets_eq_plus_rest: yield_expr_or_star_expressions | star_targets TK_ASSIGN star_targets_eq_plus_rest` ->
-# The issue is the name `star_targets_eq_plus_rest`, if it has yield_expr_or_star_expressions that means a = (yield 1).  The recursive rule handles a = b = c
-# My original grammar star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon seems right for `(target TK_ASSIGN)*`.
-# Let's use the structure implied by Python's official grammar which often does `(a '=' )+ b`.
-# star_targets_eq_plus: star_target_equals (star_target_equals)*
-# star_target_equals: star_targets TK_ASSIGN
-# (This structure above refers to the left hand side of assignment)
-# Correct form seems to be:
-# star_targets_assignment_lhs: star_targets TK_ASSIGN star_targets_assignment_lhs | star_targets TK_ASSIGN
-# And then assignment is `star_targets_assignment_lhs yield_expr_or_star_expressions`.
-# For simplicity sticking to what was originally and only modifying the type_comment_opt:
-# The provided `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon` actually parses as (`star_targets TK_ASSIGN`)* then epsilon. So `star_targets_eq_plus` becomes `star_targets TK_ASSIGN (star_targets TK_ASSIGN)*`
-# So original: `star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest`
-# And `star_targets_eq_plus_rest: yield_expr_or_star_expressions | star_targets TK_ASSIGN star_targets_eq_plus_rest`
-# The prompt `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon` IS ALREADY CHANGED from what a typical Python grammar looks like.
-# I will assume the existing structure:
-# star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest # LHS of '='.
-# star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon # More LHS parts
-# So the main rule should be: star_targets_eq_plus yield_expr_or_star_expressions
-# The structure presented `star_targets_eq_plus yield_expr_or_star_expressions type_comment_opt` where
-# `star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest`
-# `star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon`  This definition of `star_targets_eq_plus_rest` makes `star_targets_eq_plus` become `(star_targets TK_ASSIGN)+`. This looks correct for LHS of chained assignment.
+
 
 yield_expr_or_star_expressions: yield_expr | star_expressions
 
@@ -183,7 +158,6 @@ function_def_raw:
 
 params_opt: params | epsilon
 func_return_annotation_opt: TK_FUNC_RETURN_TYPE expression | epsilon # '->'
-# func_type_comment_opt was removed
 
 # Function parameters
 # -------------------
@@ -220,10 +194,6 @@ kwds_opt: kwds | epsilon
 param_maybe_default_plus: param_maybe_default param_maybe_default_star
 
 kwds: TK_POWER param_no_default # '**'
-
-# Original type_comment_opt_maybe_comma relied on type_comment_opt. Now simplified:
-# type_comment_opt_maybe_comma: type_comment_opt param_ending_char
-# This means it is just param_ending_char since type_comment_opt is effectively epsilon.
 
 param_no_default: param param_ending_char # type_comment_opt_maybe_comma became param_ending_char
 param_no_default_star_annotation: param_star_annotation param_ending_char # type_comment_opt_maybe_comma became param_ending_char
@@ -311,9 +281,6 @@ except_as_name_opt: TK_AS TK_IDENTIFIER | epsilon
 
 except_star_block: TK_EXCEPT TK_MULTIPLY expression except_as_name_opt TK_COLON block
 finally_block: TK_FINALLY TK_COLON block
-
-# Match statement and related rules (TK_MATCH_SOFTKW, TK_CASE_SOFTKW, etc.) removed.
-# Type statement and related rules (TK_TYPE_SOFTKW, type_params, etc.) removed.
 
 # EXPRESSIONS
 # -----------
@@ -632,8 +599,5 @@ del_t_atom:
     | TK_LBRACKET del_targets_opt TK_RBRACKET
 del_targets_opt: del_targets | epsilon
 
-
-# TYPING ELEMENTS section removed.
-# func_type_comment rule and its usages also removed.
 
 # ========================= END OF THE MODIFIED GRAMMAR ===========================
