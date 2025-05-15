@@ -1,0 +1,772 @@
+# STARTING RULES
+# ==============
+
+file: statements_opt TK_EOF
+statements_opt: statements | epsilon
+
+# GENERAL STATEMENTS
+# ==================
+
+statements: statement statement_star
+statement_star: statement statement_star | epsilon
+
+statement: compound_stmt | simple_stmts
+
+simple_stmts: simple_stmt_list optional_semicolon TK_NEWLINE
+simple_stmt_list: simple_stmt simple_stmt_list_tail_star
+simple_stmt_list_tail_star: TK_SEMICOLON simple_stmt simple_stmt_list_tail_star | epsilon
+optional_semicolon: TK_SEMICOLON | epsilon
+
+simple_stmt:
+    | assignment
+    | type_alias
+    | star_expressions
+    | return_stmt
+    | import_stmt
+    | raise_stmt
+    | TK_PASS
+    | del_stmt
+    | yield_stmt
+    | assert_stmt
+    | TK_BREAK
+    | TK_CONTINUE
+    | global_stmt
+    | nonlocal_stmt
+
+compound_stmt:
+    | function_def
+    | if_stmt
+    | class_def
+    | with_stmt
+    | for_stmt
+    | try_stmt
+    | while_stmt
+    | match_stmt
+
+# SIMPLE STATEMENTS
+# =================
+
+assignment:
+    | TK_IDENTIFIER TK_COLON expression assignment_eq_annotated_rhs_opt
+    | TK_LPAREN single_target TK_RPAREN TK_COLON expression assignment_eq_annotated_rhs_opt
+    | single_subscript_attribute_target TK_COLON expression assignment_eq_annotated_rhs_opt
+    | star_targets_eq_plus yield_expr_or_star_expressions type_comment_opt
+    | single_target augassign yield_expr_or_star_expressions
+
+assignment_eq_annotated_rhs_opt: TK_ASSIGN annotated_rhs | epsilon
+
+star_targets_eq_plus: star_targets TK_ASSIGN star_targets_eq_plus_rest
+star_targets_eq_plus_rest: star_targets TK_ASSIGN star_targets_eq_plus_rest | epsilon
+
+yield_expr_or_star_expressions: yield_expr | star_expressions
+
+annotated_rhs: yield_expr | star_expressions
+
+augassign:
+    | TK_PLUS_ASSIGN | TK_MINUS_ASSIGN | TK_MULTIPLY_ASSIGN | TK_IMATMUL /* @= */ | TK_DIVIDE_ASSIGN
+    | TK_MOD_ASSIGN | TK_BIT_AND_ASSIGN | TK_BIT_OR_ASSIGN | TK_BIT_XOR_ASSIGN
+    | TK_BIT_LEFT_SHIFT_ASSIGN | TK_BIT_RIGHT_SHIFT_ASSIGN | TK_POWER_ASSIGN | TK_FLOORDIV_ASSIGN
+
+return_stmt: TK_RETURN star_expressions_opt
+star_expressions_opt: star_expressions | epsilon
+
+raise_stmt:
+    | TK_RAISE expression raise_from_opt
+    | TK_RAISE
+raise_from_opt: TK_FROM expression | epsilon
+
+global_stmt: TK_GLOBAL name_comma_list
+nonlocal_stmt: TK_NONLOCAL name_comma_list
+
+name_comma_list: TK_IDENTIFIER name_comma_list_tail_star
+name_comma_list_tail_star: TK_COMMA TK_IDENTIFIER name_comma_list_tail_star | epsilon
+
+del_stmt: TK_DEL del_targets
+
+yield_stmt: yield_expr
+
+assert_stmt: TK_ASSERT expression assert_comma_expr_opt
+assert_comma_expr_opt: TK_COMMA expression | epsilon
+
+import_stmt: import_name | import_from
+
+# Import statements
+# -----------------
+
+import_name: TK_IMPORT dotted_as_names
+
+import_from:
+    | TK_FROM dot_or_ellipsis_star dotted_name TK_IMPORT import_from_targets
+    | TK_FROM dot_or_ellipsis_plus TK_IMPORT import_from_targets
+
+dot_or_ellipsis_star: dot_or_ellipsis dot_or_ellipsis_star | epsilon
+dot_or_ellipsis_plus: dot_or_ellipsis dot_or_ellipsis_star
+dot_or_ellipsis: TK_PERIOD | TK_ELLIPSIS # Needs TK_ELLIPSIS
+
+import_from_targets:
+    | TK_LPAREN import_from_as_names optional_comma TK_RPAREN
+    | import_from_as_names
+    | TK_MULTIPLY # For '*'
+
+optional_comma: TK_COMMA | epsilon
+
+import_from_as_names: import_from_as_name import_from_as_name_comma_list_star
+import_from_as_name_comma_list_star: TK_COMMA import_from_as_name import_from_as_name_comma_list_star | epsilon
+
+import_from_as_name: TK_IDENTIFIER import_from_as_name_as_opt
+import_from_as_name_as_opt: TK_AS TK_IDENTIFIER | epsilon
+
+dotted_as_names: dotted_as_name dotted_as_name_comma_list_star
+dotted_as_name_comma_list_star: TK_COMMA dotted_as_name dotted_as_name_comma_list_star | epsilon
+
+dotted_as_name: dotted_name dotted_as_name_as_opt
+dotted_as_name_as_opt: TK_AS TK_IDENTIFIER | epsilon
+
+dotted_name: dotted_name TK_PERIOD TK_IDENTIFIER | TK_IDENTIFIER
+
+# COMPOUND STATEMENTS
+# ===================
+
+# Common elements
+# ---------------
+
+block:
+    | TK_NEWLINE TK_INDENT statements TK_DEDENT
+    | simple_stmts
+
+decorators: decorator_plus
+decorator_plus: decorator_item decorator_plus_star
+decorator_plus_star: decorator_item decorator_plus_star | epsilon
+decorator_item: TK_MATMUL named_expression TK_NEWLINE # '@' symbol maps to TK_MATMUL
+
+# Class definitions
+# -----------------
+
+class_def: decorators class_def_raw | class_def_raw
+
+class_def_raw: TK_CLASS TK_IDENTIFIER type_params_opt class_arguments_opt TK_COLON block
+class_arguments_opt: TK_LPAREN arguments_opt TK_RPAREN | epsilon
+type_params_opt: type_params | epsilon
+arguments_opt: arguments | epsilon
+
+
+# Function definitions
+# --------------------
+
+function_def: decorators function_def_raw | function_def_raw
+
+function_def_raw:
+    | TK_DEF TK_IDENTIFIER type_params_opt TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON func_type_comment_opt block
+    | TK_ASYNC TK_DEF TK_IDENTIFIER type_params_opt TK_LPAREN params_opt TK_RPAREN func_return_annotation_opt TK_COLON func_type_comment_opt block
+
+params_opt: params | epsilon
+func_return_annotation_opt: TK_FUNC_RETURN_TYPE expression | epsilon # '->'
+func_type_comment_opt: func_type_comment | epsilon
+
+
+# Function parameters
+# -------------------
+
+params: parameters
+
+parameters:
+    | slash_no_default param_no_default_star param_with_default_star star_etc_opt
+    | slash_with_default param_with_default_star star_etc_opt
+    | param_no_default_plus param_with_default_star star_etc_opt
+    | param_with_default_plus star_etc_opt
+    | star_etc
+
+param_no_default_star: param_no_default param_no_default_star | epsilon
+param_with_default_star: param_with_default param_with_default_star | epsilon
+star_etc_opt: star_etc | epsilon
+
+param_no_default_plus: param_no_default param_no_default_star
+param_with_default_plus: param_with_default param_with_default_star
+
+
+slash_no_default: param_no_default_plus TK_DIVIDE slash_ending_char # '/'
+slash_with_default: param_no_default_star param_with_default_plus TK_DIVIDE slash_ending_char # '/'
+slash_ending_char: TK_COMMA | epsilon
+
+star_etc:
+    | TK_MULTIPLY param_no_default param_maybe_default_star kwds_opt
+    | TK_MULTIPLY param_no_default_star_annotation param_maybe_default_star kwds_opt
+    | TK_MULTIPLY TK_COMMA param_maybe_default_plus kwds_opt
+    | kwds
+
+param_maybe_default_star: param_maybe_default param_maybe_default_star | epsilon
+kwds_opt: kwds | epsilon
+param_maybe_default_plus: param_maybe_default param_maybe_default_star
+
+kwds: TK_POWER param_no_default # '**'
+
+param_no_default: param type_comment_opt_maybe_comma
+param_no_default_star_annotation: param_star_annotation type_comment_opt_maybe_comma
+param_with_default: param default type_comment_opt_maybe_comma
+param_maybe_default: param default_opt type_comment_opt_maybe_comma
+
+type_comment_opt_maybe_comma: type_comment_opt param_ending_char
+param_ending_char: TK_COMMA | epsilon
+
+default_opt: default | epsilon
+type_comment_opt: TK_TYPE_COMMENT | epsilon # Needs TK_TYPE_COMMENT
+
+param: TK_IDENTIFIER annotation_opt
+param_star_annotation: TK_IDENTIFIER star_annotation
+annotation_opt: annotation | epsilon
+
+annotation: TK_COLON expression
+star_annotation: TK_COLON star_expression
+default: TK_ASSIGN expression
+
+# If statement
+# ------------
+
+if_stmt:
+    | TK_IF named_expression TK_COLON block elif_stmt
+    | TK_IF named_expression TK_COLON block else_block_opt
+
+elif_stmt:
+    | TK_ELIF named_expression TK_COLON block elif_stmt
+    | TK_ELIF named_expression TK_COLON block else_block_opt
+
+else_block_opt: else_block | epsilon
+else_block: TK_ELSE TK_COLON block
+
+# While statement
+# ---------------
+
+while_stmt: TK_WHILE named_expression TK_COLON block else_block_opt
+
+# For statement
+# -------------
+
+for_stmt:
+    | TK_FOR star_targets TK_IN star_expressions TK_COLON type_comment_opt block else_block_opt
+    | TK_ASYNC TK_FOR star_targets TK_IN star_expressions TK_COLON type_comment_opt block else_block_opt
+
+# With statement
+# --------------
+
+with_stmt:
+    | TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON type_comment_opt block
+    | TK_WITH with_item_comma_list TK_COLON type_comment_opt block
+    | TK_ASYNC TK_WITH TK_LPAREN with_item_comma_list optional_comma TK_RPAREN TK_COLON block
+    | TK_ASYNC TK_WITH with_item_comma_list TK_COLON type_comment_opt block
+
+with_item_comma_list: with_item with_item_comma_list_tail_star
+with_item_comma_list_tail_star: TK_COMMA with_item with_item_comma_list_tail_star | epsilon
+
+with_item:
+    | expression TK_AS star_target
+    | expression
+
+# Try statement
+# -------------
+
+try_stmt:
+    | TK_TRY TK_COLON block finally_block
+    | TK_TRY TK_COLON block except_block_plus else_block_opt finally_block_opt
+    | TK_TRY TK_COLON block except_star_block_plus else_block_opt finally_block_opt
+
+except_block_plus: except_block except_block_plus_star
+except_block_plus_star: except_block except_block_plus_star | epsilon
+
+except_star_block_plus: except_star_block except_star_block_plus_star
+except_star_block_plus_star: except_star_block except_star_block_plus_star | epsilon
+
+finally_block_opt: finally_block | epsilon
+
+# Except statement
+# ----------------
+
+except_block:
+    | TK_EXCEPT expression except_as_name_opt TK_COLON block
+    | TK_EXCEPT TK_COLON block
+except_as_name_opt: TK_AS TK_IDENTIFIER | epsilon
+
+except_star_block: TK_EXCEPT TK_MULTIPLY expression except_as_name_opt TK_COLON block
+finally_block: TK_FINALLY TK_COLON block
+
+# Match statement
+# ---------------
+
+match_stmt: TK_MATCH_SOFTKW subject_expr TK_COLON TK_NEWLINE TK_INDENT case_block_plus TK_DEDENT # Needs TK_MATCH_SOFTKW
+case_block_plus: case_block case_block_plus_star
+case_block_plus_star: case_block case_block_plus_star | epsilon
+
+subject_expr:
+    | star_named_expression TK_COMMA star_named_expressions_opt
+    | named_expression
+star_named_expressions_opt: star_named_expressions | epsilon
+
+case_block: TK_CASE_SOFTKW patterns guard_opt TK_COLON block # Needs TK_CASE_SOFTKW
+guard_opt: guard | epsilon
+
+guard: TK_IF named_expression
+
+patterns: open_sequence_pattern | pattern
+
+pattern: as_pattern | or_pattern
+
+as_pattern: or_pattern TK_AS pattern_capture_target
+
+or_pattern: closed_pattern closed_pattern_pipe_list_star
+closed_pattern_pipe_list_star: TK_BIT_OR closed_pattern closed_pattern_pipe_list_star | epsilon # '|' as bitwise or
+
+closed_pattern:
+    | literal_pattern
+    | capture_pattern
+    | wildcard_pattern
+    | value_pattern
+    | group_pattern
+    | sequence_pattern
+    | mapping_pattern
+    | class_pattern
+
+literal_pattern:
+    | signed_number
+    | complex_number # Assumes TK_NUMBER handles imaginary parts like '3j' or TK_COMPLEX is used carefully
+    | strings
+    | TK_NONE
+    | TK_TRUE
+    | TK_FALSE
+
+literal_expr:
+    | signed_number
+    | complex_number
+    | strings
+    | TK_NONE
+    | TK_TRUE
+    | TK_FALSE
+
+complex_number:
+    | signed_real_number TK_PLUS imaginary_number
+    | signed_real_number TK_MINUS imaginary_number
+
+signed_number: TK_NUMBER | TK_MINUS TK_NUMBER
+signed_real_number: real_number | TK_MINUS real_number
+real_number: TK_NUMBER
+imaginary_number: TK_NUMBER # Assumes TK_NUMBER can be '3j'
+
+capture_pattern: pattern_capture_target
+
+pattern_capture_target: name_not_underscore
+name_not_underscore: TK_IDENTIFIER # Lexer should ensure this is not "_" if needed, or parser checks lexeme
+
+wildcard_pattern: TK_IDENTIFIER # For "_" - lexer might return special token or parser checks lexeme TK_IDENTIFIER=="_". Here assuming generic TK_IDENTIFIER.
+                             # A TK_UNDERSCORE token would be clearer.
+
+value_pattern: attr
+
+attr: name_or_attr TK_PERIOD TK_IDENTIFIER
+name_or_attr: attr | TK_IDENTIFIER
+
+group_pattern: TK_LPAREN pattern TK_RPAREN
+
+sequence_pattern:
+    | TK_LBRACKET maybe_sequence_pattern_opt TK_RBRACKET
+    | TK_LPAREN open_sequence_pattern_opt TK_RPAREN
+maybe_sequence_pattern_opt: maybe_sequence_pattern | epsilon
+open_sequence_pattern_opt: open_sequence_pattern | epsilon
+
+open_sequence_pattern: maybe_star_pattern TK_COMMA maybe_sequence_pattern_opt
+
+maybe_sequence_pattern: maybe_star_pattern_comma_list optional_comma
+maybe_star_pattern_comma_list: maybe_star_pattern maybe_star_pattern_comma_list_tail_star
+maybe_star_pattern_comma_list_tail_star: TK_COMMA maybe_star_pattern maybe_star_pattern_comma_list_tail_star | epsilon
+
+maybe_star_pattern: star_pattern | pattern
+
+star_pattern:
+    | TK_MULTIPLY pattern_capture_target
+    | TK_MULTIPLY wildcard_pattern
+
+mapping_pattern:
+    | TK_LBRACE TK_RBRACE
+    | TK_LBRACE double_star_pattern optional_comma TK_RBRACE
+    | TK_LBRACE items_pattern TK_COMMA double_star_pattern optional_comma TK_RBRACE
+    | TK_LBRACE items_pattern optional_comma TK_RBRACE
+
+items_pattern: key_value_pattern_comma_list
+key_value_pattern_comma_list: key_value_pattern key_value_pattern_comma_list_tail_star
+key_value_pattern_comma_list_tail_star: TK_COMMA key_value_pattern key_value_pattern_comma_list_tail_star | epsilon
+
+key_value_pattern: literal_expr_or_attr TK_COLON pattern
+literal_expr_or_attr: literal_expr | attr
+
+double_star_pattern: TK_POWER pattern_capture_target # '**'
+
+class_pattern:
+    | name_or_attr TK_LPAREN TK_RPAREN
+    | name_or_attr TK_LPAREN positional_patterns optional_comma TK_RPAREN
+    | name_or_attr TK_LPAREN keyword_patterns optional_comma TK_RPAREN
+    | name_or_attr TK_LPAREN positional_patterns TK_COMMA keyword_patterns optional_comma TK_RPAREN
+
+positional_patterns: pattern_comma_list
+pattern_comma_list: pattern pattern_comma_list_tail_star
+pattern_comma_list_tail_star: TK_COMMA pattern pattern_comma_list_tail_star | epsilon
+
+keyword_patterns: keyword_pattern_comma_list
+keyword_pattern_comma_list: keyword_pattern keyword_pattern_comma_list_tail_star
+keyword_pattern_comma_list_tail_star: TK_COMMA keyword_pattern keyword_pattern_comma_list_tail_star | epsilon
+
+keyword_pattern: TK_IDENTIFIER TK_ASSIGN pattern
+
+# Type statement
+# ---------------
+
+type_alias: TK_TYPE_SOFTKW TK_IDENTIFIER type_params_opt TK_ASSIGN expression # Needs TK_TYPE_SOFTKW for "type"
+
+# Type parameter declaration
+# --------------------------
+
+type_params: TK_LBRACKET type_param_seq TK_RBRACKET
+
+type_param_seq: type_param_comma_list optional_comma
+type_param_comma_list: type_param type_param_comma_list_tail_star
+type_param_comma_list_tail_star: TK_COMMA type_param type_param_comma_list_tail_star | epsilon
+
+type_param:
+    | TK_IDENTIFIER type_param_bound_opt type_param_default_opt
+    | TK_MULTIPLY TK_IDENTIFIER type_param_starred_default_opt
+    | TK_POWER TK_IDENTIFIER type_param_default_opt # '**'
+
+type_param_bound_opt: type_param_bound | epsilon
+type_param_default_opt: type_param_default | epsilon
+type_param_starred_default_opt: type_param_starred_default | epsilon
+
+type_param_bound: TK_COLON expression
+type_param_default: TK_ASSIGN expression
+type_param_starred_default: TK_ASSIGN star_expression
+
+# EXPRESSIONS
+# -----------
+
+expressions:
+    | expression expression_comma_plus optional_comma
+    | expression TK_COMMA
+    | expression
+expression_comma_plus: TK_COMMA expression expression_comma_plus_star
+expression_comma_plus_star: TK_COMMA expression expression_comma_plus_star | epsilon
+
+
+expression:
+    | disjunction TK_IF disjunction TK_ELSE expression
+    | disjunction
+    | lambdef
+
+yield_expr:
+    | TK_YIELD TK_FROM expression
+    | TK_YIELD star_expressions_opt
+
+star_expressions:
+    | star_expression star_expression_comma_plus optional_comma
+    | star_expression TK_COMMA
+    | star_expression
+star_expression_comma_plus: TK_COMMA star_expression star_expression_comma_plus_star
+star_expression_comma_plus_star: TK_COMMA star_expression star_expression_comma_plus_star | epsilon
+
+star_expression: TK_MULTIPLY bitwise_or | expression
+
+star_named_expressions: star_named_expression_comma_list optional_comma
+star_named_expression_comma_list: star_named_expression star_named_expression_comma_list_tail_star
+star_named_expression_comma_list_tail_star: TK_COMMA star_named_expression star_named_expression_comma_list_tail_star | epsilon
+
+star_named_expression: TK_MULTIPLY bitwise_or | named_expression
+
+assignment_expression: TK_IDENTIFIER TK_WALNUT expression # ':='
+
+named_expression: assignment_expression | expression
+
+disjunction: conjunction disjunction_tail_star
+disjunction_tail_star: TK_OR conjunction disjunction_tail_star | epsilon
+
+conjunction: inversion conjunction_tail_star
+conjunction_tail_star: TK_AND inversion conjunction_tail_star | epsilon
+
+inversion: TK_NOT inversion | comparison
+
+comparison: bitwise_or compare_op_bitwise_or_pair_star
+compare_op_bitwise_or_pair_star: compare_op_bitwise_or_pair compare_op_bitwise_or_pair_star | epsilon
+
+compare_op_bitwise_or_pair:
+    | eq_bitwise_or | noteq_bitwise_or | lte_bitwise_or | lt_bitwise_or
+    | gte_bitwise_or | gt_bitwise_or | notin_bitwise_or | in_bitwise_or
+    | isnot_bitwise_or | is_bitwise_or
+
+eq_bitwise_or: TK_EQUAL bitwise_or
+noteq_bitwise_or: TK_NOT_EQUAL bitwise_or
+lte_bitwise_or: TK_LESS_EQUAL bitwise_or
+lt_bitwise_or: TK_LESS bitwise_or
+gte_bitwise_or: TK_GREATER_EQUAL bitwise_or
+gt_bitwise_or: TK_GREATER bitwise_or
+notin_bitwise_or: TK_NOT TK_IN bitwise_or
+in_bitwise_or: TK_IN bitwise_or
+isnot_bitwise_or: TK_IS TK_NOT bitwise_or
+is_bitwise_or: TK_IS bitwise_or
+
+bitwise_or: bitwise_or TK_BIT_OR bitwise_xor | bitwise_xor
+bitwise_xor: bitwise_xor TK_BIT_XOR bitwise_and | bitwise_and
+bitwise_and: bitwise_and TK_BIT_AND shift_expr | shift_expr
+shift_expr: shift_expr TK_BIT_LEFT_SHIFT sum | shift_expr TK_BIT_RIGHT_SHIFT sum | sum
+
+sum: sum TK_PLUS term | sum TK_MINUS term | term
+term: term TK_MULTIPLY factor | term TK_DIVIDE factor | term TK_FLOORDIV factor | term TK_MOD factor | term TK_MATMUL factor | factor
+factor: TK_PLUS factor | TK_MINUS factor | TK_BIT_NOT factor | power
+power: await_primary TK_POWER factor | await_primary # '**' for power
+
+await_primary: TK_AWAIT primary | primary
+primary:
+    | primary TK_PERIOD TK_IDENTIFIER
+    | primary genexp
+    | primary TK_LPAREN arguments_opt TK_RPAREN
+    | primary TK_LBRACKET slices TK_RBRACKET
+    | atom
+
+slices:
+    | slice
+    | slice_or_starred_expr_comma_list optional_comma
+
+slice_or_starred_expr_comma_list: slice_or_starred_expr slice_or_starred_expr_comma_list_tail_star
+slice_or_starred_expr_comma_list_tail_star: TK_COMMA slice_or_starred_expr slice_or_starred_expr_comma_list_tail_star | epsilon
+slice_or_starred_expr: slice | starred_expression
+
+slice: expression_opt TK_COLON expression_opt slice_colon_expr_opt | named_expression
+expression_opt: expression | epsilon
+slice_colon_expr_opt: TK_COLON expression_opt | epsilon
+
+atom:
+    | TK_IDENTIFIER | TK_TRUE | TK_FALSE | TK_NONE | strings | TK_NUMBER
+    | tuple_group_genexp_variant
+    | list_listcomp_variant
+    | dict_set_comp_variant
+    | TK_ELLIPSIS # Needs TK_ELLIPSIS
+
+tuple_group_genexp_variant: tuple | group | genexp
+list_listcomp_variant: list | listcomp
+dict_set_comp_variant: dict | set | dictcomp | setcomp
+
+group: TK_LPAREN yield_expr_or_named_expression TK_RPAREN
+yield_expr_or_named_expression: yield_expr | named_expression
+
+lambdef: TK_LAMBDA lambda_params_opt TK_COLON expression
+lambda_params_opt: lambda_params | epsilon
+
+lambda_params: lambda_parameters
+
+lambda_parameters:
+    | lambda_slash_no_default lambda_param_no_default_star lambda_param_with_default_star lambda_star_etc_opt
+    | lambda_slash_with_default lambda_param_with_default_star lambda_star_etc_opt
+    | lambda_param_no_default_plus lambda_param_with_default_star lambda_star_etc_opt
+    | lambda_param_with_default_plus lambda_star_etc_opt
+    | lambda_star_etc
+
+lambda_param_no_default_star: lambda_param_no_default lambda_param_no_default_star | epsilon
+lambda_param_with_default_star: lambda_param_with_default lambda_param_with_default_star | epsilon
+lambda_star_etc_opt: lambda_star_etc | epsilon
+
+lambda_param_no_default_plus: lambda_param_no_default lambda_param_no_default_star
+lambda_param_with_default_plus: lambda_param_with_default lambda_param_with_default_star
+
+lambda_slash_no_default: lambda_param_no_default_plus TK_DIVIDE lambda_slash_ending_char # '/'
+lambda_slash_with_default: lambda_param_no_default_star lambda_param_with_default_plus TK_DIVIDE lambda_slash_ending_char # '/'
+lambda_slash_ending_char: TK_COMMA | epsilon
+
+lambda_star_etc:
+    | TK_MULTIPLY lambda_param_no_default lambda_param_maybe_default_star lambda_kwds_opt
+    | TK_MULTIPLY TK_COMMA lambda_param_maybe_default_plus lambda_kwds_opt
+    | lambda_kwds
+
+lambda_param_maybe_default_star: lambda_param_maybe_default lambda_param_maybe_default_star | epsilon
+lambda_kwds_opt: lambda_kwds | epsilon
+lambda_param_maybe_default_plus: lambda_param_maybe_default lambda_param_maybe_default_star
+
+lambda_kwds: TK_POWER lambda_param_no_default # '**'
+
+lambda_param_no_default: lambda_param lambda_param_ending_char
+lambda_param_with_default: lambda_param default lambda_param_ending_char
+lambda_param_maybe_default: lambda_param default_opt lambda_param_ending_char
+lambda_param_ending_char: TK_COMMA | epsilon
+
+lambda_param: TK_IDENTIFIER
+
+# LITERALS
+# ========
+
+# Assuming TK_FSTRING_START, TK_FSTRING_MIDDLE, TK_FSTRING_END are added to Token.hpp
+fstring_middle: fstring_replacement_field | TK_FSTRING_MIDDLE
+fstring_replacement_field: TK_LBRACE annotated_rhs fstring_eq_opt fstring_conversion_opt fstring_full_format_spec_opt TK_RBRACE
+fstring_eq_opt: TK_ASSIGN | epsilon
+fstring_conversion_opt: fstring_conversion | epsilon
+fstring_full_format_spec_opt: fstring_full_format_spec | epsilon
+
+fstring_conversion: TK_NOT TK_IDENTIFIER # "!" - using TK_NOT (usually logical not) for '!' char; could define TK_BANG
+fstring_full_format_spec: TK_COLON fstring_format_spec_star
+fstring_format_spec_star: fstring_format_spec fstring_format_spec_star | epsilon
+fstring_format_spec: TK_FSTRING_MIDDLE | fstring_replacement_field
+
+fstring: TK_FSTRING_START fstring_middle_star TK_FSTRING_END
+fstring_middle_star: fstring_middle fstring_middle_star | epsilon
+
+string: TK_STRING # Could also be TK_BYTES here, or a more general rule
+strings: fstring_or_string_plus
+fstring_or_string_plus: fstring_or_string fstring_or_string_plus_star
+fstring_or_string_plus_star: fstring_or_string fstring_or_string_plus_star | epsilon
+fstring_or_string: fstring | string | TK_BYTES # Added TK_BYTES here as a string-like literal
+
+list: TK_LBRACKET star_named_expressions_opt TK_RBRACKET
+
+tuple: TK_LPAREN tuple_content_opt TK_RPAREN
+tuple_content_opt: star_named_expression TK_COMMA star_named_expressions_opt | epsilon
+
+set: TK_LBRACE star_named_expressions TK_RBRACE
+
+dict: TK_LBRACE double_starred_kvpairs_opt TK_RBRACE
+double_starred_kvpairs_opt: double_starred_kvpairs | epsilon
+
+double_starred_kvpairs: double_starred_kvpair_comma_list optional_comma
+double_starred_kvpair_comma_list: double_starred_kvpair double_starred_kvpair_comma_list_tail_star
+double_starred_kvpair_comma_list_tail_star: TK_COMMA double_starred_kvpair double_starred_kvpair_comma_list_tail_star | epsilon
+
+double_starred_kvpair: TK_POWER bitwise_or | kvpair # '**'
+kvpair: expression TK_COLON expression
+
+# Comprehensions & Generators
+# ---------------------------
+
+for_if_clauses: for_if_clause_plus
+for_if_clause_plus: for_if_clause for_if_clause_plus_star
+for_if_clause_plus_star: for_if_clause for_if_clause_plus_star | epsilon
+
+for_if_clause:
+    | TK_ASYNC TK_FOR star_targets TK_IN disjunction for_if_clause_if_disjunction_star
+    | TK_FOR star_targets TK_IN disjunction for_if_clause_if_disjunction_star
+for_if_clause_if_disjunction_star: TK_IF disjunction for_if_clause_if_disjunction_star | epsilon
+
+listcomp: TK_LBRACKET named_expression for_if_clauses TK_RBRACKET
+setcomp: TK_LBRACE named_expression for_if_clauses TK_RBRACE
+genexp: TK_LPAREN named_expression_for_genexp for_if_clauses TK_RPAREN
+named_expression_for_genexp: expression
+dictcomp: TK_LBRACE kvpair for_if_clauses TK_RBRACE
+
+# FUNCTION CALL ARGUMENTS
+# =======================
+
+arguments: args optional_comma
+
+args:
+    | args_main_sequence_comma_kwargs_opt
+    | kwargs
+
+args_main_sequence_comma_kwargs_opt: args_main_sequence args_comma_kwargs_opt
+args_comma_kwargs_opt: TK_COMMA kwargs | epsilon
+
+args_main_sequence: arg_item args_main_sequence_tail_star
+args_main_sequence_tail_star: TK_COMMA arg_item args_main_sequence_tail_star | epsilon
+arg_item: starred_expression | named_expression_not_eq
+named_expression_not_eq: named_expression
+
+
+kwargs:
+    | kwarg_or_starred_comma_list TK_COMMA kwarg_or_double_starred_comma_list
+    | kwarg_or_starred_comma_list
+    | kwarg_or_double_starred_comma_list
+
+kwarg_or_starred_comma_list: kwarg_or_starred kwarg_or_starred_comma_list_tail_star
+kwarg_or_starred_comma_list_tail_star: TK_COMMA kwarg_or_starred kwarg_or_starred_comma_list_tail_star | epsilon
+
+kwarg_or_double_starred_comma_list: kwarg_or_double_starred kwarg_or_double_starred_comma_list_tail_star
+kwarg_or_double_starred_comma_list_tail_star: TK_COMMA kwarg_or_double_starred kwarg_or_double_starred_comma_list_tail_star | epsilon
+
+
+starred_expression: TK_MULTIPLY expression
+
+kwarg_or_starred: TK_IDENTIFIER TK_ASSIGN expression | starred_expression
+kwarg_or_double_starred: TK_IDENTIFIER TK_ASSIGN expression | TK_POWER expression # '**'
+
+# ASSIGNMENT TARGETS
+# ==================
+
+star_targets:
+    | star_target
+    | star_target star_target_comma_list_star optional_comma
+star_target_comma_list_star: TK_COMMA star_target star_target_comma_list_star | epsilon
+
+star_targets_list_seq: star_target_comma_list optional_comma
+
+star_targets_tuple_seq:
+    | star_target star_target_comma_list_plus optional_comma
+    | star_target TK_COMMA
+star_target_comma_list_plus: TK_COMMA star_target star_target_comma_list_star
+
+
+star_target: TK_MULTIPLY unstarred_star_target | target_with_star_atom
+unstarred_star_target: star_target
+
+target_with_star_atom:
+    | t_primary TK_PERIOD TK_IDENTIFIER
+    | t_primary TK_LBRACKET slices TK_RBRACKET
+    | star_atom
+
+star_atom:
+    | TK_IDENTIFIER
+    | TK_LPAREN target_with_star_atom TK_RPAREN
+    | TK_LPAREN star_targets_tuple_seq_opt TK_RPAREN
+    | TK_LBRACKET star_targets_list_seq_opt TK_RBRACKET
+star_targets_tuple_seq_opt: star_targets_tuple_seq | epsilon
+star_targets_list_seq_opt: star_targets_list_seq | epsilon
+
+single_target:
+    | single_subscript_attribute_target
+    | TK_IDENTIFIER
+    | TK_LPAREN single_target TK_RPAREN
+
+single_subscript_attribute_target:
+    | t_primary TK_PERIOD TK_IDENTIFIER
+    | t_primary TK_LBRACKET slices TK_RBRACKET
+
+t_primary:
+    | t_primary TK_PERIOD TK_IDENTIFIER
+    | t_primary TK_LBRACKET slices TK_RBRACKET
+    | t_primary genexp
+    | t_primary TK_LPAREN arguments_opt TK_RPAREN
+    | atom
+
+del_targets: del_target_comma_list optional_comma
+del_target_comma_list: del_target del_target_comma_list_tail_star
+del_target_comma_list_tail_star: TK_COMMA del_target del_target_comma_list_tail_star | epsilon
+
+del_target:
+    | t_primary TK_PERIOD TK_IDENTIFIER
+    | t_primary TK_LBRACKET slices TK_RBRACKET
+    | del_t_atom
+
+del_t_atom:
+    | TK_IDENTIFIER
+    | TK_LPAREN del_target TK_RPAREN
+    | TK_LPAREN del_targets_opt TK_RPAREN
+    | TK_LBRACKET del_targets_opt TK_RBRACKET
+del_targets_opt: del_targets | epsilon
+
+
+# TYPING ELEMENTS
+# ---------------
+
+type_expressions:
+    | expr_comma_list TK_COMMA TK_MULTIPLY expression TK_COMMA TK_POWER expression
+    | expr_comma_list TK_COMMA TK_MULTIPLY expression
+    | expr_comma_list TK_COMMA TK_POWER expression
+    | TK_MULTIPLY expression TK_COMMA TK_POWER expression
+    | TK_MULTIPLY expression
+    | TK_POWER expression
+    | expr_comma_list
+
+expr_comma_list: expression expr_comma_list_tail_star
+expr_comma_list_tail_star: TK_COMMA expression expr_comma_list_tail_star | epsilon
+
+func_type_comment:
+    | TK_NEWLINE TK_TYPE_COMMENT # Needs TK_TYPE_COMMENT
+    | TK_TYPE_COMMENT
+
+# ========================= END OF THE GRAMMAR ===========================
