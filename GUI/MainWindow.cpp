@@ -337,6 +337,7 @@ void MainWindow::runLexer() {
 
 
         // --- Phase 4: Update UI based on success and results ---
+        // Enable parser
         if (lexerSuccess) {
             viewSymbolTableAct->setEnabled(!lastSymbols.empty());
             viewTokenSequenceAct->setEnabled(!lastTokens.empty());
@@ -455,6 +456,10 @@ void MainWindow::runParser() {
 
 // TODO: Make sure this is enabled and disabled correctly
 void MainWindow::showParserTree() {
+    if (!viewParserTreeAct->isEnabled()) {
+        QMessageBox::information(this, tr("Parser Tree"), tr("No parser tree found or parser not run successfully yet."));
+        return;
+    }
     const auto dialog = new ParserTreeDialog("../dot_example.dot", this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->show();

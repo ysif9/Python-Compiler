@@ -11,8 +11,8 @@ ParserTreeDialog::ParserTreeDialog(const QString &dotFilePath, QWidget *parent)
     : QDialog(parent),
       imageLabel(new QLabel(this)) {
     setupUi();
-
-    if (const QPixmap pixmap = renderDotToPixmap(dotFilePath); !pixmap.isNull()) {
+    const QPixmap pixmap = renderDotToPixmap(dotFilePath);
+    if (!pixmap.isNull()) {
         imageLabel->setPixmap(pixmap);
         imageLabel->setScaledContents(true);
     } else {
@@ -20,8 +20,24 @@ ParserTreeDialog::ParserTreeDialog(const QString &dotFilePath, QWidget *parent)
     }
 
     setWindowTitle(tr("Parse Tree Viewer"));
-    resize(800, 600);
-    setWindowIcon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
+    if (!pixmap.isNull()) {
+        const QSize imageSize = pixmap.size();
+        constexpr auto maxSize = QSize(2000, 2000); // Optional: set a max size to avoid huge dialogs
+
+        // Add some padding to ensure full image fits inside the dialog
+        constexpr int paddingWidth = 40;  // Account for borders/scrollbar
+        constexpr int paddingHeight = 80; // Account for title bar/layout
+
+        const QSize paddedSize = imageSize + QSize(paddingWidth, paddingHeight);
+
+        // Constrain to max size
+        const QSize finalSize = paddedSize.boundedTo(maxSize);
+
+        resize(finalSize);
+    } else {
+        resize(600, 800); // fallback
+    }
+    setWindowIcon(QApplication::style()->standardIcon(QStyle::SP_DialogYesButton));
 }
 
 void ParserTreeDialog::setupUi() {
