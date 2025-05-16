@@ -292,10 +292,13 @@ public:
     const std::vector<std::string>& getErrors() const; // Return syntax errors
     void saveDotFile(const string &dotContent, const string &filename);
 
+    string getDotFilePath() const;
+
 private:
     Lexer& lexer;
     Token currentToken;
     std::vector<std::string> errors;
+    string dotFilePath;
 
     // Parsing methods (recursive descent)
     void advance(); // Move to next token

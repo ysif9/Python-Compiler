@@ -126,6 +126,7 @@ private:
     std::unique_ptr<Lexer> lexer_instance;
     std::vector<Token> lastTokens;
     std::unordered_map<std::string, std::string> lastSymbols;
+    string dotFilePath;
 
     // Menus
     QMenu *fileMenu;

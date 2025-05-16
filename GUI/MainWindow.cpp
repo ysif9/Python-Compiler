@@ -474,6 +474,7 @@ void MainWindow::runParser() {
         // --- Handle parser logic later ----
         parser_instance.parse();
         parser_errors = parser_instance.getErrors();
+        dotFilePath = parser_instance.getDotFilePath();
 
         // Check if the parser reported any errors
         if (!parser_errors.empty()) {
@@ -528,9 +529,15 @@ void MainWindow::showParserTree() {
                                  tr("No parser tree found or parser not run successfully yet."));
         return;
     }
-    const auto dialog = new ParserTreeDialog("../dot_example.dot", this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    if (!dotFilePath.empty()) {
+        const auto dialog = new ParserTreeDialog(dotFilePath.data(), this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+    else {
+        QMessageBox::information(this, tr("Parser Tree"),
+                                 tr("No parser tree found or parser not run successfully yet."));
+    }
 }
 
 
