@@ -21,7 +21,7 @@
 class Parser {
 public:
     explicit Parser(Lexer& lexer_instance);
-    std::unique_ptr<ProgramNode> parse();
+    std::shared_ptr<ProgramNode> parse();
 
     bool hasError() const { return had_error; }
     const std::vector<std::string>& getErrors() const { return errors_list; }
@@ -33,6 +33,7 @@ private:
     bool had_error;
     std::vector<std::string> errors_list;
     static Token eof_token; // Static EOF token for boundary conditions
+    string dotFilePath;
 
     // Core helper methods
     Token& peek(int offset = 0);
@@ -132,6 +133,10 @@ private:
 
     // Helper for simplified_star_etc in parameters
     void parseSimplifiedStarEtc(ArgumentsNode& args_node_ref);
+
+    void saveDotFile(shared_ptr<ProgramNode> &root, const string &filename);
+
+    string getDotFilePath() const;
 
     void unputToken();
 

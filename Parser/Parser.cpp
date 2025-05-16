@@ -1,5 +1,8 @@
 #include "Parser.hpp"
 #include <iostream> // For temporary debugging, remove in production
+#include <filesystem>
+
+#include "DOTGenerator.hpp"
 
 using namespace std;
 // Initialize static EOF token
@@ -33,7 +36,7 @@ Parser::Parser(Lexer& lexer_instance)
     }
 }
 
-unique_ptr<ProgramNode> Parser::parse() {
+shared_ptr<ProgramNode> Parser::parse() {
     if (tokens.empty() || (tokens.size() == 1 && tokens[0].type == TokenType::TK_EOF && had_error)) {
         // If only EOF token exists due to lexer error, or no tokens, return empty program
         // reportError might not have a valid token if tokens is empty
@@ -44,7 +47,9 @@ unique_ptr<ProgramNode> Parser::parse() {
     // errors_list is not cleared here to preserve lexer errors if any.
     // If parse is called multiple times, caller should handle error state.
     // For a typical compiler, parse is called once.
-    return parseFile();
+    std::shared_ptr module = parseFile();
+    saveDotFile(module, "AST.dot");
+    return module;
 }
 
 // --- Core Helper Methods ---
@@ -2251,4 +2256,18 @@ void Parser::parseSimplifiedStarEtc(ArgumentsNode& args_node_ref) {
         args_node_ref.kwarg = std::make_unique<ParameterNode>(power_token.line, name_token.lexeme, ParameterNode::Kind::VAR_KEYWORD, nullptr);
     }
     // If neither * nor ** is found, this function does nothing (epsilon part of simplified_star_etc_opt)
+
+
+
+}
+
+void Parser::saveDotFile(shared_ptr<ProgramNode>& root, const string& filename) {
+    DOTGenerator dotGenerator;
+    dotGenerator.generate(root.get(), filename);
+    std::filesystem::path fullPath = std::filesystem::absolute(filename);
+    dotFilePath = fullPath.string(); // Return the full path as std::string
+}
+
+string Parser::getDotFilePath() const {
+    return dotFilePath;
 }
