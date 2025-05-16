@@ -40,11 +40,9 @@ private:
     bool isAtEnd(int offset = 0);
     Token advance();
     bool check(TokenType type) const;
-    bool check(const std::vector<TokenType>& types) co  nst;
+    bool check(const std::vector<TokenType>& types) const;
     bool match(TokenType type);
-    bool match(const std::vector<TokenType>& types);
     Token consume(TokenType type, const std::string& message);
-    Token consume(const std::vector<TokenType>& types, const std::string& message);
     void reportError(const Token& token, const std::string& message);
     void synchronize();
 
@@ -58,12 +56,10 @@ private:
     std::vector<std::unique_ptr<StatementNode>> parseStatements();
     std::unique_ptr<StatementNode> parseStatement();
     std::vector<std::unique_ptr<StatementNode>> parseSimpleStmts();
-    std::vector<std::unique_ptr<StatementNode>> parseSimpleStmtList();
     std::unique_ptr<StatementNode> parseSimpleStmt();
     std::unique_ptr<StatementNode> parseCompoundStmt();
 
     // SIMPLE STATEMENTS
-    std::unique_ptr<StatementNode> parseAssignment();
     Token parseAugassign();
     std::unique_ptr<ReturnStatementNode> parseReturnStmt();
     std::unique_ptr<ExpressionNode> parseExpressionsOpt();
@@ -72,17 +68,6 @@ private:
     std::unique_ptr<GlobalStatementNode> parseGlobalStmt();
     std::unique_ptr<NonlocalStatementNode> parseNonlocalStmt();
     std::vector<std::unique_ptr<IdentifierNode>> parseNameCommaList(int& line_start);
-    std::unique_ptr<StatementNode> parseImportStmt();
-
-    // Import statements
-    std::unique_ptr<ImportStatementNode> parseImportNameRule();
-    std::unique_ptr<ImportFromStatementNode> parseImportFromRule();
-    std::vector<std::unique_ptr<NamedImportNode>> parseDottedAsNames(int& line_start);
-    std::unique_ptr<NamedImportNode> parseDottedAsName();
-    std::string parseDottedName(int& line_start);
-    void parseImportFromTargets(std::vector<std::unique_ptr<ImportNameNode>>& names, bool& import_star, int line);
-    std::vector<std::unique_ptr<ImportNameNode>> parseImportFromAsNames(int& line_start);
-    std::unique_ptr<ImportNameNode> parseImportFromAsName(int& line_start);
 
     // COMPOUND STATEMENTS & Common elements
     std::unique_ptr<BlockNode> parseBlock();
@@ -123,17 +108,15 @@ private:
     std::unique_ptr<SliceNode> parseSlice();
     std::unique_ptr<ExpressionNode> parseAtom(bool in_target_context = false); // Added flag
 
+
     // Literals and Atoms
     std::unique_ptr<ExpressionNode> parseTupleGroupVariant(bool in_target_context);
     std::unique_ptr<ListLiteralNode> parseListVariant(bool in_target_context);
     std::unique_ptr<ExpressionNode> parseDictSetVariant();
-    std::unique_ptr<ExpressionNode> parseGroup();
     std::unique_ptr<StringLiteralNode> parseStrings(); // Concatenates adjacent string literals
     std::unique_ptr<BytesLiteralNode> parseBytes();     // For bytes literals
     std::unique_ptr<ListLiteralNode> parseListLiteral(bool in_target_context);
-    std::unique_ptr<TupleLiteralNode> parseTupleLiteral(bool in_target_context);
-    std::unique_ptr<SetLiteralNode> parseSetLiteral();
-    std::unique_ptr<DictLiteralNode> parseDictLiteral();
+
     void parseKvPair(std::vector<std::unique_ptr<ExpressionNode>>& keys, std::vector<std::unique_ptr<ExpressionNode>>& values, int line);
 
     // Arguments for function calls (CFG: arguments -> args)
@@ -152,7 +135,7 @@ private:
 
     void unputToken();
 
-    unique_ptr<StatementNode> parseAssignmentTail(vector<std::unique_ptr<ExpressionNode>> targets);
+    unique_ptr<StatementNode> parseImportStatement();
 };
 
 #endif // PARSER_HPP
