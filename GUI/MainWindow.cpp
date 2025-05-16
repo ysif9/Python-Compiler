@@ -25,6 +25,7 @@
 #include <QSaveFile>
 #include <QDir>
 
+#include "Parser.hpp"
 #include "ParserTreeDialog.hpp"
 
 using namespace std;
@@ -34,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
       // textEdit member removed
       findDialog(nullptr),
       isUntitled(true),
+      lexer_instance(nullptr),
       // Initialize menu pointers
       fileMenu(nullptr),
       editMenu(nullptr),
@@ -303,7 +305,8 @@ void MainWindow::runLexer() {
 
     try {
         const string codeStdString = currentCode.toStdString();
-        Lexer lexer(codeStdString); // Create the lexer
+        lexer_instance = std::make_unique<Lexer>(codeStdString);
+        Lexer &lexer = *lexer_instance;
 
         // --- Phase 1: Tokenization ---
         Token token;
@@ -381,6 +384,7 @@ void MainWindow::runLexer() {
     // Ensure view actions are appropriately enabled/disabled based on final state
     viewSymbolTableAct->setEnabled(lexerSuccess && !lastSymbols.empty());
     viewTokenSequenceAct->setEnabled(lexerSuccess && !lastTokens.empty());
+    parseAct->setEnabled(lexerSuccess && !lastSymbols.empty());
 }
 
 void MainWindow::showSymbolTable() {
@@ -430,7 +434,6 @@ void MainWindow::updateUndoRedoActions() const {
 void MainWindow::updateLexerActionsState() {
     const bool hasText = !editor->toPlainText().isEmpty();
     runAct->setEnabled(hasText);
-    parseAct->setEnabled(hasText);
 
     // If text is modified or empty, invalidate previous lexer results
     if (editor->document()->isModified() || !hasText) {
@@ -443,21 +446,86 @@ void MainWindow::disableLexerResultActions() {
     // Check if actions exist before disabling
     if (viewSymbolTableAct) viewSymbolTableAct->setEnabled(false);
     if (viewTokenSequenceAct) viewTokenSequenceAct->setEnabled(false);
+    if (parseAct) parseAct->setEnabled(false);
     // Clear stored results
     lastTokens.clear();
     lastSymbols.clear();
 }
 
 // --- Parser Actions ---
-//TODO: Implement this
 void MainWindow::runParser() {
-    std::cout << "hi";
+    if (lexer_instance == nullptr) {
+        statusBar()->showMessage(tr("Lexer not initialized."), 3000);
+        // disableLexerResultActions(); // change this
+        return;
+    }
+
+    statusBar()->showMessage(tr("Running parser..."));
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+
+    // disableLexerResultActions(); // Clears lastTokens/lastSymbols and disables buttons
+
+    bool parser_success_flag = true;
+    std::vector<std::string> parser_errors;
+
+    try {
+        Parser parser_instance(*lexer_instance);
+
+        // --- Handle parser logic later ----
+        parser_instance.parse();
+        parser_errors = parser_instance.getErrors();
+
+        // Check if the parser reported any errors
+        if (!parser_errors.empty()) {
+            parser_success_flag = false; // Mark as not fully successful if errors occurred
+        }
+
+        if (parser_success_flag) {
+            // TODO: Add logic to check the dot file exists or ast tree successful
+            viewParserTreeAct->setEnabled(true);
+
+            // TODO: Display success message and stats
+            // const int symbolCount = static_cast<int>(lastSymbols.size());
+            statusBar()->showMessage(
+                tr("Parser finished successfully.")
+            );
+            // arg(symbolCount), 5000);
+        } else {
+            statusBar()->showMessage(tr("Parser finished with %n error(s).", "", parser_errors.size()), 5000);
+        }
+    } catch (const std::exception &e) {
+        parser_success_flag = false;
+        QGuiApplication::restoreOverrideCursor(); // Restore cursor before showing message box
+        QMessageBox::critical(this, tr("Parser Runtime Error"),
+                              tr("A runtime error occurred during syntax analysis:\n%1").arg(e.what()));
+        statusBar()->showMessage(tr("Parser failed."), 3000);
+    } catch (...) {
+        parser_success_flag = false;
+        QGuiApplication::restoreOverrideCursor(); // Restore cursor before showing message box
+        QMessageBox::critical(this, tr("Parser Runtime Error"),
+                              tr("An unknown runtime error occurred during syntax analysis."));
+        statusBar()->showMessage(tr("Parser failed."), 3000);
+    }
+
+    // Ensure cursor is always restored
+    if (QGuiApplication::overrideCursor()) {
+        QGuiApplication::restoreOverrideCursor();
+    }
+
+    if (!parser_errors.empty()) {
+        ErrorDialog errorDialog(parser_errors, this); // Create the dialog
+        errorDialog.exec(); // Show it modally
+    }
+
+    // --- Final UI State Update ---
+    //TODO: Ensure view actions are appropriately enabled/disabled based on final state
 }
 
 // TODO: Make sure this is enabled and disabled correctly
 void MainWindow::showParserTree() {
     if (!viewParserTreeAct->isEnabled()) {
-        QMessageBox::information(this, tr("Parser Tree"), tr("No parser tree found or parser not run successfully yet."));
+        QMessageBox::information(this, tr("Parser Tree"),
+                                 tr("No parser tree found or parser not run successfully yet."));
         return;
     }
     const auto dialog = new ParserTreeDialog("../dot_example.dot", this);
@@ -644,7 +712,7 @@ bool MainWindow::maybeSave() {
     if (!editor->document()->isModified())
         return true;
     const QMessageBox::StandardButton ret
-            = QMessageBox::warning(this, tr("GOGI"),
+            = QMessageBox::warning(this, tr("Py2Cpp"),
                                    tr("The document has been modified.\n"
                                        "Do you want to save your changes?"),
                                    QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
@@ -664,7 +732,7 @@ bool MainWindow::maybeSave() {
 void MainWindow::loadFile(const QString &fileName) {
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("GOGI"),
+        QMessageBox::warning(this, tr("Py2Cpp"),
                              tr("Cannot read file %1:\n%2.")
                              .arg(QDir::toNativeSeparators(fileName), file.errorString()));
         return;
@@ -713,7 +781,7 @@ bool MainWindow::saveFile(const QString &fileName) {
     QGuiApplication::restoreOverrideCursor();
 
     if (!errorMessage.isEmpty()) {
-        QMessageBox::warning(this, tr("GOGI"), errorMessage);
+        QMessageBox::warning(this, tr("Py2Cpp"), errorMessage);
         return false;
     }
 
@@ -735,7 +803,7 @@ void MainWindow::setCurrentFile(const QString &fileName) {
     } else {
         isUntitled = true;
     }
-    setWindowTitle(tr("%1[*] - %2").arg(shownName, tr("GOGI")));
+    setWindowTitle(tr("%1[*] - %2").arg(shownName, tr("Py2Cpp")));
     setWindowModified(editor->document()->isModified());
 }
 

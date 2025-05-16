@@ -40,7 +40,7 @@ private:
     bool isAtEnd(int offset = 0);
     Token advance();
     bool check(TokenType type) const;
-    bool check(const std::vector<TokenType>& types) co  nst;
+    bool check(const std::vector<TokenType>& types) const;
     bool match(TokenType type);
     bool match(const std::vector<TokenType>& types);
     Token consume(TokenType type, const std::string& message);

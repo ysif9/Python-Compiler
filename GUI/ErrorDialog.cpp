@@ -11,30 +11,36 @@ ErrorDialog::ErrorDialog(const std::vector<Lexer_error> &errors, QWidget *parent
     : QDialog(parent) {
     setWindowTitle(tr("Lexer Errors"));
     setMinimumSize(500, 300); // Set a reasonable minimum size
-
-    // Create the text display area
-    errorDisplay = new QPlainTextEdit(this);
-    errorDisplay->setReadOnly(true); // User cannot edit the errors
-    errorDisplay->setLineWrapMode(QPlainTextEdit::NoWrap); // Prevent line wrapping initially
-
-    // Create standard buttons (just Close for this dialog)
-    buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
-
-    // Connect the Close button signal to the dialog's reject slot (which closes it)
-    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-
-    // Create the main layout
-    // TODO: Apparently leaked memory here
-    auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->addWidget(errorDisplay); // Add text area
-    mainLayout->addWidget(buttonBox); // Add button box
-
-    // Set the layout for the dialog
-    setLayout(mainLayout);
-
-    // Populate the display with the provided errors
+    setupUi();
     displayErrors(errors);
 }
+
+ErrorDialog::ErrorDialog(const std::vector<string> &errors, QWidget *parent)
+    : QDialog(parent) {
+    setWindowTitle(tr("Parser Errors"));
+    setMinimumSize(500, 300); // Set a reasonable minimum size
+    setupUi();
+    displayErrors(errors);
+}
+
+void ErrorDialog::setupUi() {
+    errorDisplay = new QPlainTextEdit(this);
+    errorDisplay->setReadOnly(true);
+    errorDisplay->setLineWrapMode(QPlainTextEdit::NoWrap);
+
+    QFont font("monospace");
+    font.setStyleHint(QFont::TypeWriter);
+    errorDisplay->setFont(font);
+
+    buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+
+    auto *mainLayout = new QVBoxLayout(this);
+    mainLayout->addWidget(errorDisplay);
+    mainLayout->addWidget(buttonBox);
+    setLayout(mainLayout);
+}
+
 
 // Implementation of the displayErrors helper function
 void ErrorDialog::displayErrors(const std::vector<Lexer_error> &errors) const {
@@ -65,5 +71,20 @@ void ErrorDialog::displayErrors(const std::vector<Lexer_error> &errors) const {
     }
 
     // Move cursor to the beginning of the text
+    errorDisplay->moveCursor(QTextCursor::Start);
+}
+
+void ErrorDialog::displayErrors(const std::vector<std::string> &errors) const {
+    errorDisplay->clear();
+
+    if (errors.empty()) {
+        errorDisplay->setPlainText(tr("No errors reported by the Parser."));
+        return;
+    }
+
+    for (const auto &errorMsg : errors) {
+        errorDisplay->appendPlainText(QString::fromStdString(errorMsg));
+    }
+
     errorDisplay->moveCursor(QTextCursor::Start);
 }

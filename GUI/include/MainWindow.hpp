@@ -123,6 +123,7 @@ private:
     bool isUntitled;
 
     // *** Lexer Results ***
+    std::unique_ptr<Lexer> lexer_instance;
     std::vector<Token> lastTokens;
     std::unordered_map<std::string, std::string> lastSymbols;
 

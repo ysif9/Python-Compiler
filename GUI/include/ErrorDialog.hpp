@@ -16,6 +16,9 @@ class ErrorDialog final : public QDialog {
 public:
     // Constructor: Takes the list of errors and the parent widget
     explicit ErrorDialog(const std::vector<Lexer_error> &errors, QWidget *parent = nullptr);
+    explicit ErrorDialog(const std::vector<std::string> &errors, QWidget *parent = nullptr);
+
+    void setupUi();
 
     ~ErrorDialog() override = default; // Use default destructor
 
@@ -26,6 +29,7 @@ private:
 
     // Helper function to format and display errors
     void displayErrors(const std::vector<Lexer_error> &errors) const;
+    void displayErrors(const std::vector<std::string> &errors) const;
 };
 
 #endif // ERRORDIALOG_HPP
