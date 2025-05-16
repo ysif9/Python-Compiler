@@ -4,10 +4,11 @@ using namespace std;
 
 
 Parser::Parser(Lexer& lexer) : lexer(lexer) {
-    advance(); // Initialize currentToken
+    current_index = 0;
+    currentToken = lexer.tokens[current_index];
 }
 void Parser::advance() {
-    currentToken = lexer.nextToken();
+    currentToken = lexer.tokens[++ current_index ];
 }
 
 bool Parser::match(TokenType type) {
