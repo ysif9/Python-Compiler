@@ -5,30 +5,28 @@
 using namespace std;
 
 
-Parser::Parser(Lexer &lexer) : lexer(lexer) {
-    advance(); // Initialize currentToken
+Parser::Parser(Lexer& lexer) : lexer(lexer) {
+    current_index = 0;
+    currentToken = lexer.tokens[current_index];
 }
-
 void Parser::advance() {
-    currentToken = lexer.nextToken();
+    currentToken = lexer.tokens[++ current_index ];
 }
 
 bool Parser::match(TokenType type) {
     return currentToken.type == type;
 }
 
-bool Parser::expect(TokenType type, const string &errorMsg) {
+bool Parser::expect(TokenType type, const string& errorMsg) {
     if (match(type)) {
         advance();
         return true;
     }
-    errors.push_back(
-        "Syntax error at line " + to_string(currentToken.line) + ": " + errorMsg + " but got " + tokenTypeToString(
-            currentToken.type));
+    errors.push_back("Syntax error at line " + to_string(currentToken.line) + ": " + errorMsg + " but got " + tokenTypeToString(currentToken.type));
     return false;
 }
 
-void Parser::reportError(const string &message) {
+void Parser::reportError(const string& message) {
     errors.push_back("Syntax error at line " + to_string(currentToken.line) + ": " + message);
 }
 
@@ -542,6 +540,10 @@ shared_ptr<AstNode> Parser::parseArgumentsOpt() {
     }
     return nullptr;
 }
+
+
+
+
 
 
 shared_ptr<AstNode> Parser::parseFunctionDef() {
@@ -1947,7 +1949,7 @@ string Parser::nodeTypeToString(NodeType type) {
     }
 }
 
-void Parser::generateDotNode(shared_ptr<AstNode> node, string &output, int &nodeId, vector<pair<int, int> > &edges) {
+void Parser::generateDotNode(shared_ptr<AstNode> node, string& output, int& nodeId, vector<pair<int, int>>& edges) {
     if (!node) return;
 
     int currentId = nodeId++;
@@ -1957,7 +1959,7 @@ void Parser::generateDotNode(shared_ptr<AstNode> node, string &output, int &node
     }
     output += "    node" + to_string(currentId) + " [label=\"" + label + "\"];\n";
 
-    for (const auto &child: node->children) {
+    for (const auto& child : node->children) {
         if (child) {
             int childId = nodeId;
             edges.push_back({currentId, childId});
@@ -1972,10 +1974,10 @@ string Parser::generateDot(shared_ptr<AstNode> root) {
     output += "    node [shape=box];\n"; // Box shape for nodes
 
     int nodeId = 0;
-    vector<pair<int, int> > edges;
+    vector<pair<int, int>> edges;
     generateDotNode(root, output, nodeId, edges);
 
-    for (const auto &edge: edges) {
+    for (const auto& edge : edges) {
         output += "    node" + to_string(edge.first) + " -> node" + to_string(edge.second) + ";\n";
     }
 
@@ -1984,13 +1986,12 @@ string Parser::generateDot(shared_ptr<AstNode> root) {
 }
 
 
-const vector<string> &Parser::getErrors() const {
+const vector<string>& Parser::getErrors() const {
     return errors;
 }
-
 #include <fstream>
 
-void Parser::saveDotFile(const string &dotContent, const string &filename) {
+void Parser::saveDotFile(const string& dotContent, const string& filename) {
     ofstream out(filename);
     if (!out.is_open()) {
         errors.push_back("Failed to open file for writing: " + filename);

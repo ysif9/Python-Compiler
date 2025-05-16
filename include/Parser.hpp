@@ -297,6 +297,7 @@ public:
 private:
     Lexer& lexer;
     Token currentToken;
+    int current_index;
     std::vector<std::string> errors;
     string dotFilePath;
 
