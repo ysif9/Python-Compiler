@@ -5,7 +5,7 @@
 #include "Token.hpp" // For Token struct if used directly (e.g. BinaryOpNode)
 #include "Literals.hpp" // Include new literals file
 #include "Helpers.hpp"  // For KeywordArgNode if used in expressions (e.g. Dict items implicitly)
-#include "UtilNodes.hpp" // For ArgumentsNode (in Lambda)
+#include "UtilNodes.hpp" // For ArgumentsNode
 
 #include <vector>
 #include <string>
@@ -55,20 +55,6 @@ public:
     std::string getNodeName() const override { return "UnaryOpNode"; }
 };
 
-// Represents *expr or **expr
-class StarExprNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> value;
-    enum class Kind { SINGLE_STAR, DOUBLE_STAR } kind; // Differentiates *args from **kwargs type usage
-
-    StarExprNode(int line, std::unique_ptr<ExpressionNode> val, Kind k)
-            : ExpressionNode(line), value(std::move(val)), kind(k) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "StarExprNode"; }
-};
-
-
 class FunctionCallNode : public ExpressionNode {
 public:
     std::unique_ptr<ExpressionNode> callee;
@@ -114,7 +100,7 @@ public:
 class SubscriptionNode : public ExpressionNode { // obj[index]
 public:
     std::unique_ptr<ExpressionNode> object;
-    std::unique_ptr<ExpressionNode> slice_or_index;
+    std::unique_ptr<ExpressionNode> slice_or_index; // Can be a SliceNode or any other ExpressionNode
 
     SubscriptionNode(int line, std::unique_ptr<ExpressionNode> obj_expr, std::unique_ptr<ExpressionNode> index_expr)
             : ExpressionNode(line), object(std::move(obj_expr)), slice_or_index(std::move(index_expr)) {}
@@ -146,40 +132,10 @@ public:
     std::string getNodeName() const override { return "TupleLiteralNode"; }
 };
 
-
-class DictElementNode : public ASTNode { // Helper base for DictLiteralNode elements
-public:
-    DictElementNode(int line) : ASTNode(line) {}
-};
-
-class KeyValuePairNode : public DictElementNode {
-public:
-    std::unique_ptr<ExpressionNode> key;
-    std::unique_ptr<ExpressionNode> value;
-
-    KeyValuePairNode(int line, std::unique_ptr<ExpressionNode> k, std::unique_ptr<ExpressionNode> v)
-            : DictElementNode(line), key(std::move(k)), value(std::move(v)) {}
-
-    // void accept(ASTVisitor* visitor) override { visitor->visit(this); } // Requires visitor method
-    std::string getNodeName() const override { return "KeyValuePairNode"; }
-};
-
-class DictUnpackNode : public DictElementNode { // For **expr in dicts
-public:
-    std::unique_ptr<ExpressionNode> value_to_unpack; // This should be the expr after **
-
-    DictUnpackNode(int line, std::unique_ptr<ExpressionNode> val)
-            : DictElementNode(line), value_to_unpack(std::move(val)) {}
-
-    // void accept(ASTVisitor* visitor) override { visitor->visit(this); } // Requires visitor method
-    std::string getNodeName() const override { return "DictUnpackNode"; }
-};
-
-
 class DictLiteralNode : public ExpressionNode {
 public:
     std::vector<std::unique_ptr<ExpressionNode>> keys;
-    std::vector<std::unique_ptr<ExpressionNode>> values;
+    std::vector<std::unique_ptr<ExpressionNode>> values; // Parallel vectors for key-value pairs
 
     DictLiteralNode(int line, std::vector<std::unique_ptr<ExpressionNode>> dict_keys,
                     std::vector<std::unique_ptr<ExpressionNode>> dict_values)
@@ -199,6 +155,7 @@ public:
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "SetLiteralNode"; }
 };
+
 // Ternary: value_if_true IF condition ELSE value_if_false
 class IfExpNode : public ExpressionNode {
 public:
@@ -229,58 +186,4 @@ public:
     std::string getNodeName() const override { return "ComparisonNode"; }
 };
 
-// Helper for comprehensions: 'for target in iter [if cond1 [if cond2 ...]]'
-class ComprehensionGeneratorNode : public ASTNode { // Not an expression itself
-public:
-    std::unique_ptr<ExpressionNode> target;   // LHS of 'in'
-    std::unique_ptr<ExpressionNode> iter;     // RHS of 'in'
-    std::vector<std::unique_ptr<ExpressionNode>> ifs; // Conditions
-
-    ComprehensionGeneratorNode(int line, std::unique_ptr<ExpressionNode> t, std::unique_ptr<ExpressionNode> i,
-                               std::vector<std::unique_ptr<ExpressionNode>> conditions) // Removed async_val
-            : ASTNode(line), target(std::move(t)), iter(std::move(i)), ifs(std::move(conditions)) {} // Removed is_async init
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "ComprehensionGeneratorNode"; }
-};
-
-class ListCompNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> elt; // The expression for each element
-    std::vector<std::unique_ptr<ComprehensionGeneratorNode>> generators;
-
-    ListCompNode(int line, std::unique_ptr<ExpressionNode> element_expr,
-                 std::vector<std::unique_ptr<ComprehensionGeneratorNode>> gens)
-            : ExpressionNode(line), elt(std::move(element_expr)), generators(std::move(gens)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "ListCompNode"; }
-};
-
-class SetCompNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> elt;
-    std::vector<std::unique_ptr<ComprehensionGeneratorNode>> generators;
-
-    SetCompNode(int line, std::unique_ptr<ExpressionNode> element_expr,
-                std::vector<std::unique_ptr<ComprehensionGeneratorNode>> gens)
-            : ExpressionNode(line), elt(std::move(element_expr)), generators(std::move(gens)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "SetCompNode"; }
-};
-
-class DictCompNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> key;
-    std::unique_ptr<ExpressionNode> value;
-    std::vector<std::unique_ptr<ComprehensionGeneratorNode>> generators;
-
-    DictCompNode(int line, std::unique_ptr<ExpressionNode> k, std::unique_ptr<ExpressionNode> v,
-                 std::vector<std::unique_ptr<ComprehensionGeneratorNode>> gens)
-            : ExpressionNode(line), key(std::move(k)), value(std::move(v)), generators(std::move(gens)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "DictCompNode"; }
-};
 #endif // EXPRESSIONS_HPP

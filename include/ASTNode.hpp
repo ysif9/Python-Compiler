@@ -25,7 +25,7 @@ public:
 
 // Forward declarations of all concrete AST node types for the ASTVisitor interface.
 
-// Literals (Often defined in Expressions.hpp or Literals.hpp)
+// Literals
 class NumberLiteralNode;
 class StringLiteralNode;
 class BooleanLiteralNode;
@@ -33,7 +33,7 @@ class NoneLiteralNode;
 class ComplexLiteralNode;
 class BytesLiteralNode;
 
-// Collection Literals (Often defined in Expressions.hpp as they are expressions)
+// Collection Literals
 class ListLiteralNode;
 class TupleLiteralNode;
 class DictLiteralNode;
@@ -47,14 +47,9 @@ class UnaryOpNode;
 class FunctionCallNode;
 class AttributeAccessNode;
 class SubscriptionNode;
-// class AssignmentExpressionNode; // REMOVED: Not in CFG (walrus :=)
 class IfExpNode;                // Ternary if expression
-class StarExprNode;             // *expr or **expr
 class ComparisonNode;           // For chained comparisons
 class SliceNode;                // For array/list slicing
-class ListCompNode;             // [x for x in y]
-class SetCompNode;              // {x for x in y}
-class DictCompNode;             // {k:v for k,v in y}
 
 // Statements
 class StatementNode;
@@ -87,7 +82,6 @@ class KeywordArgNode;           // For name=value pairs (e.g., function calls)
 class NamedImportNode;
 class ImportNameNode;
 class ExceptionHandlerNode;
-class ComprehensionGeneratorNode; // Helper for comprehensions
 
 
 // ASTVisitor interface: declares a visit method for each concrete AST node type.
@@ -117,12 +111,8 @@ public:
     virtual void visit(AttributeAccessNode* node) = 0;
     virtual void visit(SubscriptionNode* node) = 0;
     virtual void visit(IfExpNode* node) = 0;
-    virtual void visit(StarExprNode* node) = 0;
     virtual void visit(ComparisonNode* node) = 0;
     virtual void visit(SliceNode* node) = 0;
-    virtual void visit(ListCompNode* node) = 0;
-    virtual void visit(SetCompNode* node) = 0;
-    virtual void visit(DictCompNode* node) = 0;
 
     // Visit methods for Statements
     virtual void visit(ProgramNode* node) = 0;
@@ -154,8 +144,6 @@ public:
     virtual void visit(NamedImportNode* node) = 0;
     virtual void visit(ImportNameNode* node) = 0;
     virtual void visit(ExceptionHandlerNode* node) = 0;
-    virtual void visit(ComprehensionGeneratorNode* node) = 0;
-
 };
 
 #endif // ASTNODE_HPP

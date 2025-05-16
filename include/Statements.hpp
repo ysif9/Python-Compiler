@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <utility>
+#include <utility> // For std::pair in IfStatementNode
 
 // Forward declarations from other AST files
 #include "Expressions.hpp" // For ExpressionNode, IdentifierNode, etc.
@@ -47,8 +47,8 @@ public:
 
 class AssignmentStatementNode : public StatementNode {
 public:
-    std::vector<std::unique_ptr<ExpressionNode>> targets;
-    std::unique_ptr<ExpressionNode> value;
+    std::vector<std::unique_ptr<ExpressionNode>> targets; // CFG 'targets' can be multiple
+    std::unique_ptr<ExpressionNode> value; // CFG 'expressions' (RHS), parser usually forms a single expr (e.g. tuple)
 
     AssignmentStatementNode(int line, std::vector<std::unique_ptr<ExpressionNode>> tgts_expr, std::unique_ptr<ExpressionNode> val_expr)
             : StatementNode(line), targets(std::move(tgts_expr)), value(std::move(val_expr)) {}
@@ -57,14 +57,12 @@ public:
     std::string getNodeName() const override { return "AssignmentStatementNode"; }
 };
 
-// REMOVED: class AnnAssignNode
-
 // For augmented assignment: target op= value (e.g. x += 1)
 class AugAssignNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> target;
+    std::unique_ptr<ExpressionNode> target; // CFG 'single_target'
     Token op; // The augmented assignment operator (e.g., TK_PLUS_ASSIGN)
-    std::unique_ptr<ExpressionNode> value;
+    std::unique_ptr<ExpressionNode> value; // CFG 'expressions'
 
     AugAssignNode(int line, std::unique_ptr<ExpressionNode> tgt, Token op_token, std::unique_ptr<ExpressionNode> val)
             : StatementNode(line), target(std::move(tgt)), op(op_token), value(std::move(val)) {}
@@ -98,8 +96,8 @@ class IfStatementNode : public StatementNode {
 public:
     std::unique_ptr<ExpressionNode> condition;
     std::unique_ptr<BlockNode> then_block;
-    std::vector<std::pair<std::unique_ptr<ExpressionNode>, std::unique_ptr<BlockNode>>> elif_blocks;
-    std::unique_ptr<BlockNode> else_block; // Optional
+    std::vector<std::pair<std::unique_ptr<ExpressionNode>, std::unique_ptr<BlockNode>>> elif_blocks; // For TK_ELIF
+    std::unique_ptr<BlockNode> else_block; // Optional (TK_ELSE)
 
     IfStatementNode(int line, std::unique_ptr<ExpressionNode> cond_expr, std::unique_ptr<BlockNode> then_blk,
                     std::vector<std::pair<std::unique_ptr<ExpressionNode>, std::unique_ptr<BlockNode>>> elif_blks = {},
@@ -128,16 +126,16 @@ public:
 
 class ForStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> target;
-    std::unique_ptr<ExpressionNode> iterable;
+    std::unique_ptr<ExpressionNode> target; // CFG 'targets', parser wraps multiple into one (e.g. TupleLiteralNode)
+    std::unique_ptr<ExpressionNode> iterable; // CFG 'expressions', parser wraps multiple into one
     std::unique_ptr<BlockNode> body;
-    std::unique_ptr<BlockNode> else_block;
+    std::unique_ptr<BlockNode> else_block; // Optional
 
     ForStatementNode(int line, std::unique_ptr<ExpressionNode> target_expr, std::unique_ptr<ExpressionNode> iter_expr,
-                     std::unique_ptr<BlockNode> body_block, /* Removed async_val */
+                     std::unique_ptr<BlockNode> body_block,
                      std::unique_ptr<BlockNode> else_blk = nullptr)
             : StatementNode(line), target(std::move(target_expr)), iterable(std::move(iter_expr)),
-              body(std::move(body_block)), else_block(std::move(else_blk)) {} // Removed is_async init
+              body(std::move(body_block)), else_block(std::move(else_blk)) {}
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ForStatementNode"; }
@@ -161,7 +159,7 @@ public:
 
 class ReturnStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> value; // Optional
+    std::unique_ptr<ExpressionNode> value; // Optional, from CFG 'expressions_opt'
 
     ReturnStatementNode(int line, std::unique_ptr<ExpressionNode> val_expr = nullptr)
             : StatementNode(line), value(std::move(val_expr)) {}
@@ -172,8 +170,8 @@ public:
 
 class RaiseStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> exception;
-    std::unique_ptr<ExpressionNode> cause;
+    std::unique_ptr<ExpressionNode> exception; // Optional (TK_RAISE expression ...)
+    std::unique_ptr<ExpressionNode> cause;     // Optional (TK_FROM expression)
 
     RaiseStatementNode(int line, std::unique_ptr<ExpressionNode> exc_expr = nullptr, std::unique_ptr<ExpressionNode> cause_expr = nullptr)
             : StatementNode(line), exception(std::move(exc_expr)), cause(std::move(cause_expr)) {}
@@ -186,15 +184,15 @@ public:
 class FunctionDefinitionNode : public StatementNode {
 public:
     std::unique_ptr<IdentifierNode> name;
-    std::unique_ptr<ArgumentsNode> arguments_spec;
+    std::unique_ptr<ArgumentsNode> arguments_spec; // From CFG 'params_opt'
     std::unique_ptr<BlockNode> body;
+    // Decorators, return annotations, async removed as per CFG
 
     FunctionDefinitionNode(int line, std::unique_ptr<IdentifierNode> func_name,
                            std::unique_ptr<ArgumentsNode> args_spec,
-                           std::unique_ptr<BlockNode> func_body
-            /* Removed decorators, ret_ann, async_val */)
+                           std::unique_ptr<BlockNode> func_body)
             : StatementNode(line), name(std::move(func_name)), arguments_spec(std::move(args_spec)),
-              body(std::move(func_body)) {} /* Removed init for decorators, return_annotation, is_async */
+              body(std::move(func_body)) {}
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "FunctionDefinitionNode"; }
@@ -203,27 +201,28 @@ public:
 class ClassDefinitionNode : public StatementNode {
 public:
     std::unique_ptr<IdentifierNode> name;
-    std::vector<std::unique_ptr<ExpressionNode>> base_classes;
-    std::vector<std::unique_ptr<KeywordArgNode>> keywords;
+    std::vector<std::unique_ptr<ExpressionNode>> base_classes; // From CFG 'class_arguments_opt' -> 'arguments_opt' -> positional
+    std::vector<std::unique_ptr<KeywordArgNode>> keywords;     // From CFG 'class_arguments_opt' -> 'arguments_opt' -> keywords
     std::unique_ptr<BlockNode> body;
+    // Decorators removed as per CFG
 
     ClassDefinitionNode(int line, std::unique_ptr<IdentifierNode> class_name,
                         std::vector<std::unique_ptr<ExpressionNode>> bases,
                         std::vector<std::unique_ptr<KeywordArgNode>> class_keywords,
-                        std::unique_ptr<BlockNode> class_body
-            /* Removed decorators */)
+                        std::unique_ptr<BlockNode> class_body)
             : StatementNode(line), name(std::move(class_name)), base_classes(std::move(bases)),
-              keywords(std::move(class_keywords)), body(std::move(class_body)) {} /* Removed init for decorators */
+              keywords(std::move(class_keywords)), body(std::move(class_body)) {}
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ClassDefinitionNode"; }
 };
 
 // --- Import Statements ---
-class NamedImportNode : public ASTNode {
+// Helper for 'import a as b' parts
+class NamedImportNode : public ASTNode { // Corresponds to CFG 'dotted_as_name'
 public:
-    std::string module_path_str;
-    std::unique_ptr<IdentifierNode> alias;
+    std::string module_path_str; // The 'dotted_name' part
+    std::unique_ptr<IdentifierNode> alias; // Optional 'AS TK_IDENTIFIER' part
 
     NamedImportNode(int line, std::string path_str, std::unique_ptr<IdentifierNode> alias_node = nullptr)
             : ASTNode(line), module_path_str(std::move(path_str)), alias(std::move(alias_node)) {}
@@ -232,7 +231,7 @@ public:
     std::string getNodeName() const override { return "NamedImportNode"; }
 };
 
-class ImportStatementNode : public StatementNode { // 'import a, b as c'
+class ImportStatementNode : public StatementNode { // 'import a, b as c' (CFG 'import_name')
 public:
     std::vector<std::unique_ptr<NamedImportNode>> names;
 
@@ -243,10 +242,11 @@ public:
     std::string getNodeName() const override { return "ImportStatementNode"; }
 };
 
-class ImportNameNode : public ASTNode {
+// Helper for 'from .mod import x as y' parts
+class ImportNameNode : public ASTNode { // Corresponds to CFG 'import_from_as_name'
 public:
-    std::string name_str;
-    std::unique_ptr<IdentifierNode> alias;
+    std::string name_str; // The 'TK_IDENTIFIER' being imported
+    std::unique_ptr<IdentifierNode> alias; // Optional 'AS TK_IDENTIFIER' part
 
     ImportNameNode(int line, std::string imported_name_str, std::unique_ptr<IdentifierNode> alias_node = nullptr)
             : ASTNode(line), name_str(std::move(imported_name_str)), alias(std::move(alias_node)) {}
@@ -255,12 +255,12 @@ public:
     std::string getNodeName() const override { return "ImportNameNode"; }
 };
 
-class ImportFromStatementNode : public StatementNode {
+class ImportFromStatementNode : public StatementNode { // (CFG 'import_from')
 public:
-    int level;
-    std::string module_str;
-    std::vector<std::unique_ptr<ImportNameNode>> names;
-    bool import_star;
+    int level; // Number of leading dots (from 'dot_or_ellipsis_star' or 'dot_or_ellipsis_plus')
+    std::string module_str; // Optional module name after dots (from 'dotted_name')
+    std::vector<std::unique_ptr<ImportNameNode>> names; // Specific names imported
+    bool import_star; // True if 'TK_MULTIPLY' is used
 
     ImportFromStatementNode(int line, int lvl, std::string mod_str,
                             std::vector<std::unique_ptr<ImportNameNode>> import_names, bool star = false)
@@ -274,7 +274,7 @@ public:
 // --- Scope Statements ---
 class GlobalStatementNode : public StatementNode {
 public:
-    std::vector<std::unique_ptr<IdentifierNode>> names;
+    std::vector<std::unique_ptr<IdentifierNode>> names; // From CFG 'name_comma_list'
 
     GlobalStatementNode(int line, std::vector<std::unique_ptr<IdentifierNode>> global_names)
             : StatementNode(line), names(std::move(global_names)) {}
@@ -285,7 +285,7 @@ public:
 
 class NonlocalStatementNode : public StatementNode {
 public:
-    std::vector<std::unique_ptr<IdentifierNode>> names;
+    std::vector<std::unique_ptr<IdentifierNode>> names; // From CFG 'name_comma_list'
 
     NonlocalStatementNode(int line, std::vector<std::unique_ptr<IdentifierNode>> nonlocal_names)
             : StatementNode(line), names(std::move(nonlocal_names)) {}
@@ -295,30 +295,29 @@ public:
 };
 
 // --- Exception Handling ---
-class ExceptionHandlerNode : public ASTNode {
+class ExceptionHandlerNode : public ASTNode { // Corresponds to CFG 'except_block'
 public:
-    std::unique_ptr<ExpressionNode> type;
-    std::unique_ptr<IdentifierNode> name;
+    std::unique_ptr<ExpressionNode> type; // Optional: 'TK_EXCEPT expression'
+    std::unique_ptr<IdentifierNode> name; // Optional: 'TK_AS TK_IDENTIFIER'
     std::unique_ptr<BlockNode> body;
-    bool is_star_handler; // Kept: CFG has distinct except_star_block
+    // is_star_handler removed as 'except*' is not in the provided CFG
 
     ExceptionHandlerNode(int line, std::unique_ptr<BlockNode> handler_body,
                          std::unique_ptr<ExpressionNode> exc_type = nullptr,
-                         std::unique_ptr<IdentifierNode> exc_name = nullptr,
-                         bool star_handler = false)
+                         std::unique_ptr<IdentifierNode> exc_name = nullptr)
             : ASTNode(line), type(std::move(exc_type)), name(std::move(exc_name)),
-              body(std::move(handler_body)), is_star_handler(star_handler) {}
+              body(std::move(handler_body)) {}
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ExceptionHandlerNode"; }
 };
 
-class TryStatementNode : public StatementNode {
+class TryStatementNode : public StatementNode { // Corresponds to CFG 'try_stmt'
 public:
     std::unique_ptr<BlockNode> try_block;
-    std::vector<std::unique_ptr<ExceptionHandlerNode>> handlers;
-    std::unique_ptr<BlockNode> else_block;
-    std::unique_ptr<BlockNode> finally_block;
+    std::vector<std::unique_ptr<ExceptionHandlerNode>> handlers; // From 'except_block_plus'
+    std::unique_ptr<BlockNode> else_block;    // Optional, from 'else_block_opt'
+    std::unique_ptr<BlockNode> finally_block; // Optional, from 'finally_block' or 'finally_block_opt'
 
     TryStatementNode(int line, std::unique_ptr<BlockNode> try_b,
                      std::vector<std::unique_ptr<ExceptionHandlerNode>> ex_handlers,

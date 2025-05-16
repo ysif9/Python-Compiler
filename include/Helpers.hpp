@@ -2,9 +2,7 @@
 #define HELPERS_HPP
 
 #include "ASTNode.hpp"
-
-class IdentifierNode; // From Expressions.hpp
-class ExpressionNode; // From Expressions.hpp
+#include "Expressions.hpp"
 
 
 // Represents 'name = value' in function calls, class definitions, etc.
