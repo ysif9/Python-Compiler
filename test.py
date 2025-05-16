@@ -1,35 +1,8 @@
-def add(x, y) -> int:
-    # This function adds two numbers
-    if x > y:
-        result = x + y
-        if result > 10:
-            result = 10
-    else:
-        result = x - y
+def main():
+    x = 10; y = 20; z = 30  # Three assignment statements on one line
+    print(f"x: {x}; y: {y}; z: {z}")  # Print statement with f-string
+    if x < y: print("x is less than y"); print("This is another statement in the if block") #if statement
+    for i in range(3): print(i); print(i*2) #for loop
 
-    logic = x and y
-    logic = logic == x
-    total = result @ 1
-    total @= 2
-    is_valid = True
-    myName = 'yousif\n'
-    alsoMyName = "yousiff
-    value := 42
-    name@ = "BOB"
-    return total
-
-def foo()
-    return "Hello
-ABCDEFGHIJKLMNOPQRSTUVXYZNOWIKMYABCANDIDGAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= 79
-$$£invalid = 42£
-name@ = "Bob
-number = 123abc
-"""Testing quoted comments
-multiple lines"""
-
-# '''hi lotfy
-# nice to meet you
-# ''"
-
-
-ikio = "2
+if __name__ == "__main__":
+    main()
