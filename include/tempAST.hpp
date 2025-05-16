@@ -9,7 +9,7 @@
 enum class NodeType {
     Module, FunctionDef, Assign, Expr, BinOp, Name, Num, Str, If, While, For, Return,
     Pass, Raise, Global, Nonlocal, Del, Assert, Break, Continue, Import, ImportFrom, ClassDef, Decorator, Stmt,AugAssign,Params
-,Param,Try,Except,Finally,Slice,List,Dict,Bytes,Tuple,Set,DictItem,Args,KwArg
+,Param,Try,Except,Finally,Slice,List,Dict,Bytes,Tuple,Set,DictItem,Args,KwArg,IfExp,UnaryOp,Constant,Subscript,Attribute,Call
 };
 
 class AstNode {

@@ -1953,7 +1953,7 @@ void Parser::generateDotNode(shared_ptr<AstNode> node, string &output, int &node
     int currentId = nodeId++;
     string label = nodeTypeToString(node->type);
     if (!node->value.empty()) {
-        label += " \"" + node->value + "\"";
+        label += " \n " + node->value + "";
     }
     output += "    node" + to_string(currentId) + " [label=\"" + label + "\"];\n";
 
