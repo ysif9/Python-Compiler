@@ -456,14 +456,14 @@ void MainWindow::disableLexerResultActions() {
 void MainWindow::runParser() {
     if (lexer_instance == nullptr) {
         statusBar()->showMessage(tr("Lexer not initialized."), 3000);
-        // disableLexerResultActions(); // change this
+        viewParserTreeAct->setEnabled(false); // Clears lastTokens/lastSymbols and disables buttons
         return;
     }
 
     statusBar()->showMessage(tr("Running parser..."));
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
 
-    // disableLexerResultActions(); // Clears lastTokens/lastSymbols and disables buttons
+    viewParserTreeAct->setEnabled(false); // Clears lastTokens/lastSymbols and disables buttons
 
     bool parser_success_flag = true;
     std::vector<std::string> parser_errors;
@@ -474,6 +474,7 @@ void MainWindow::runParser() {
         // --- Handle parser logic later ----
         parser_instance.parse();
         parser_errors = parser_instance.getErrors();
+        dotFilePath = parser_instance.getDotFilePath();
 
         // Check if the parser reported any errors
         if (!parser_errors.empty()) {
@@ -528,9 +529,14 @@ void MainWindow::showParserTree() {
                                  tr("No parser tree found or parser not run successfully yet."));
         return;
     }
-    const auto dialog = new ParserTreeDialog("../dot_example.dot", this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    if (!dotFilePath.empty()) {
+        const auto dialog = new ParserTreeDialog(dotFilePath.data(), this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    } else {
+        QMessageBox::information(this, tr("Parser Tree"),
+                                 tr("No parser tree found or parser not run successfully yet."));
+    }
 }
 
 
@@ -625,7 +631,7 @@ void MainWindow::createActions() {
     viewParserTreeAct = new QAction(tr("Show &Parser Tree"), this);
     viewParserTreeAct->setStatusTip(tr("View the parser tree from the last parser run"));
     connect(viewParserTreeAct, &QAction::triggered, this, &MainWindow::showParserTree);
-    // viewParserTreeAct->setEnabled(false); // Start disabled
+    viewParserTreeAct->setEnabled(false); // Start disabled
 
     // Help Actions
     aboutAct = new QAction(tr("&About"), this);
