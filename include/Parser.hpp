@@ -1,158 +1,350 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include <vector>
 #include <string>
+#include <vector>
 #include <memory>
-#include <stdexcept> // For std::runtime_error for ParseError (optional)
-#include <algorithm> // For std::find
-
 #include "Lexer.hpp"
-#include "Token.hpp"
-
-// Include all new AST header files
-#include "ASTNode.hpp"
-#include "Literals.hpp"
-#include "Expressions.hpp"
-#include "Statements.hpp"
-#include "UtilNodes.hpp"
-#include "Helpers.hpp"
+#include "tempAST.hpp"
 
 class Parser {
 public:
-    explicit Parser(Lexer& lexer_instance);
-    std::unique_ptr<ProgramNode> parse();
+    explicit Parser(Lexer& lexer);
+    std::shared_ptr<AstNode> parse(); // Parse the entire input into an AST
+    shared_ptr<AstNode> parseFile();
 
-    bool hasError() const { return had_error; }
-    const std::vector<std::string>& getErrors() const { return errors_list; }
+    shared_ptr<AstNode> parseStatementsOpt();
+
+    shared_ptr<AstNode> parseStatements();
+
+    shared_ptr<AstNode> parseStatement();
+
+    shared_ptr<AstNode> parseStatementStar();
+
+    shared_ptr<AstNode> parseSimpleStmts();
+
+    shared_ptr<AstNode> parseSimpleStmtList();
+
+    shared_ptr<AstNode> parseSimpleStmtListTailStar();
+
+    shared_ptr<AstNode> parseOptionalSemicolon();
+
+    shared_ptr<AstNode> parseSimpleStmt();
+
+    shared_ptr<AstNode> parseCompoundStmt();
+
+    shared_ptr<AstNode> parseAssignment();
+
+    shared_ptr<AstNode> parseAssignmentEqAnnotatedRhsOpt();
+
+    shared_ptr<AstNode> parseStarTargetsEqPlus();
+
+    shared_ptr<AstNode> parseStarTargetsEqPlusRest();
+
+    shared_ptr<AstNode> parseYieldExprOrStarExpressions();
+
+    shared_ptr<AstNode> parseAnnotatedRhs();
+
+    shared_ptr<AstNode> parseAugassign();
+
+    shared_ptr<AstNode> parseReturnStmt();
+
+    shared_ptr<AstNode> parseExpressionsOpt();
+
+    shared_ptr<AstNode> parseStarExpressionsOpt();
+
+    shared_ptr<AstNode> parseRaiseStmt();
+
+    shared_ptr<AstNode> parseRaiseFromOpt();
+
+    shared_ptr<AstNode> parseGlobalStmt();
+
+    shared_ptr<AstNode> parseNonlocalStmt();
+
+    shared_ptr<AstNode> parseNameCommaList();
+
+    shared_ptr<AstNode> parseNameCommaListTailStar();
+
+    shared_ptr<AstNode> parseDelStmt();
+
+    shared_ptr<AstNode> parseYieldStmt();
+
+    shared_ptr<AstNode> parseAssertStmt();
+
+    shared_ptr<AstNode> parseAssertCommaExprOpt();
+
+    shared_ptr<AstNode> parseImportStmt();
+
+    shared_ptr<AstNode> parseImportName();
+
+    shared_ptr<AstNode> parseImportFrom();
+
+    shared_ptr<AstNode> parseDotOrEllipsisStar();
+
+    shared_ptr<AstNode> parseDotOrEllipsisPlus();
+
+    shared_ptr<AstNode> parseImportFromTargets();
+
+    shared_ptr<AstNode> parseOptionalComma();
+
+    shared_ptr<AstNode> parseImportFromAsNames();
+
+    shared_ptr<AstNode> parseImportFromAsNameCommaListStar();
+
+    shared_ptr<AstNode> parseImportFromAsName();
+
+    shared_ptr<AstNode> parseImportFromAsNameAsOpt();
+
+    shared_ptr<AstNode> parseDottedAsNames();
+
+    shared_ptr<AstNode> parseDottedAsNameCommaListStar();
+
+    shared_ptr<AstNode> parseDottedAsName();
+
+    shared_ptr<AstNode> parseDottedAsNameAsOpt();
+
+    shared_ptr<AstNode> parseDottedName();
+
+    shared_ptr<AstNode> parseBlock();
+
+    shared_ptr<AstNode> parseDecorators();
+
+    shared_ptr<AstNode> parseDecoratorPlus();
+
+    shared_ptr<AstNode> parseDecoratorPlusStar();
+
+    shared_ptr<AstNode> parseDecoratorItem();
+
+    shared_ptr<AstNode> parseClassDef();
+
+    shared_ptr<AstNode> parseClassDefRaw();
+
+    shared_ptr<AstNode> parseClassArgumentsOpt();
+
+    shared_ptr<AstNode> parseArgumentsOpt();
+
+    shared_ptr<AstNode> parseElseBlockOpt();
+
+    shared_ptr<AstNode> parseElseBlock();
+
+    shared_ptr<AstNode> parseWhileStmt();
+
+    shared_ptr<AstNode> parseForStmt();
+
+    shared_ptr<AstNode> parseTryStmt();
+
+    shared_ptr<AstNode> parseExceptBlockPlus();
+
+    shared_ptr<AstNode> parseExceptBlockPlusStar();
+
+    shared_ptr<AstNode> parseFinallyBlockOpt();
+
+    shared_ptr<AstNode> parseExceptBlock();
+
+    shared_ptr<AstNode> parseExceptAsNameOpt();
+
+    shared_ptr<AstNode> parseFinallyBlock();
+
+    shared_ptr<AstNode> parseExpressions();
+
+    shared_ptr<AstNode> parseExpressionCommaPlus();
+
+    shared_ptr<AstNode> parseExpressionCommaPlusStar();
+
+    shared_ptr<AstNode> parseExpression();
+
+    shared_ptr<AstNode> parseDisjunction();
+
+    shared_ptr<AstNode> parseDisjunctionTailStar();
+
+    shared_ptr<AstNode> parseConjunction();
+
+    shared_ptr<AstNode> parseConjunctionTailStar();
+
+    shared_ptr<AstNode> parseInversion();
+
+    shared_ptr<AstNode> parseComparison();
+
+    shared_ptr<AstNode> parseCompareOpBitwiseOrPairStar();
+
+    shared_ptr<AstNode> parseCompareOpBitwiseOrPair();
+
+    shared_ptr<AstNode> parseBitwiseOr();
+
+    shared_ptr<AstNode> parseBitwiseXor();
+
+    shared_ptr<AstNode> parseBitwiseAnd();
+
+    shared_ptr<AstNode> parseShiftExpr();
+
+    shared_ptr<AstNode> parseSum();
+
+    shared_ptr<AstNode> parseTerm();
+
+    shared_ptr<AstNode> parseFactor();
+
+    shared_ptr<AstNode> parsePower();
+
+    shared_ptr<AstNode> parsePrimary();
+
+    shared_ptr<AstNode> parseSlices();
+
+    shared_ptr<AstNode> parseSliceOrExprCommaList();
+
+    shared_ptr<AstNode> parseSliceOrExprCommaListTailStar();
+
+    shared_ptr<AstNode> parseSliceOrExpr();
+
+    shared_ptr<AstNode> parseSlice();
+
+    shared_ptr<AstNode> parseExpressionOpt();
+
+    shared_ptr<AstNode> parseSliceColonExprOpt();
+
+    shared_ptr<AstNode> parseAtom();
+
+    shared_ptr<AstNode> parseTupleGroupVariant();
+
+    shared_ptr<AstNode> parseListVariant();
+
+    shared_ptr<AstNode> parseDictSetVariant();
+
+    shared_ptr<AstNode> parseGroup();
+
+    shared_ptr<AstNode> parseString();
+
+    shared_ptr<AstNode> parseStrings();
+
+    shared_ptr<AstNode> parseFstringOrStringPlus();
+
+    shared_ptr<AstNode> parseFstringOrStringPlusStar();
+
+    shared_ptr<AstNode> parseFstringOrString();
+
+    shared_ptr<AstNode> parseList();
+
+    shared_ptr<AstNode> parseTuple();
+
+    shared_ptr<AstNode> parseTupleContentOpt();
+
+    shared_ptr<AstNode> parseSet();
+
+    shared_ptr<AstNode> parseDict();
+
+    shared_ptr<AstNode> parseKvpairsOpt();
+
+    shared_ptr<AstNode> parseKvpairs();
+
+    shared_ptr<AstNode> parseKvpairCommaList();
+
+    shared_ptr<AstNode> parseKvpairCommaListTailStar();
+
+    shared_ptr<AstNode> parseKvpair();
+
+    shared_ptr<AstNode> parseArguments();
+
+    shared_ptr<AstNode> parseArgs();
+
+    shared_ptr<AstNode> parsePositionalArgumentsList();
+
+    shared_ptr<AstNode> parsePositionalArgumentsListTailStar();
+
+    shared_ptr<AstNode> parseKeywordArgumentsList();
+
+    shared_ptr<AstNode> parseKeywordArgumentsListTailStar();
+
+    shared_ptr<AstNode> parseKeywordItem();
+
+    shared_ptr<AstNode> parseTargets();
+
+    shared_ptr<AstNode> parseTargetCommaListStar();
+
+    shared_ptr<AstNode> parseTargetsListSeq();
+
+    shared_ptr<AstNode> parseTargetCommaList();
+
+    shared_ptr<AstNode> parseTargetCommaListTailStar();
+
+    shared_ptr<AstNode> parseTargetsTupleSeq();
+
+    shared_ptr<AstNode> parseTargetCommaListPlus();
+
+    shared_ptr<AstNode> parseTarget();
+
+    shared_ptr<AstNode> parseTargetAtom();
+
+    shared_ptr<AstNode> parseTargetsTupleSeqOpt();
+
+    shared_ptr<AstNode> parseTargetsListSeqOpt();
+
+    shared_ptr<AstNode> parseSingleTarget();
+
+    shared_ptr<AstNode> parseSingleSubscriptAttributeTarget();
+
+    shared_ptr<AstNode> parseTPrimary();
+
+    string nodeTypeToString(NodeType type);
+
+    void generateDotNode(shared_ptr<AstNode> node, string &output, int &nodeId, vector<pair<int, int>> &edges);
+
+    string generateDot(shared_ptr<AstNode> root);
+
+    const std::vector<std::string>& getErrors() const; // Return syntax errors
+    void saveDotFile(const string &dotContent, const string &filename);
 
 private:
-    Lexer& lexer_ref; // Reference to the lexer
-    std::vector<Token> tokens;
-    size_t current_pos;
-    bool had_error;
-    std::vector<std::string> errors_list;
-    static Token eof_token; // Static EOF token for boundary conditions
+    Lexer& lexer;
+    Token currentToken;
+    std::vector<std::string> errors;
 
-    // Core helper methods
-    Token& peek(int offset = 0);
-    Token& previous();
-    bool isAtEnd(int offset = 0);
-    Token advance();
-    bool check(TokenType type) const;
-    bool check(const std::vector<TokenType>& types) const;
-    bool match(TokenType type);
-    bool match(const std::vector<TokenType>& types);
-    Token consume(TokenType type, const std::string& message);
-    Token consume(const std::vector<TokenType>& types, const std::string& message);
-    void reportError(const Token& token, const std::string& message);
-    void synchronize();
+    // Parsing methods (recursive descent)
+    void advance(); // Move to next token
+    bool match(TokenType type); // Check if current token matches type
+    bool expect(TokenType type, const std::string& errorMsg); // Expect a specific token or report error
+    std::shared_ptr<AstNode> parseModule(); // Parse top-level module
+    std::shared_ptr<AstNode> parseStmt(); // Parse a statement
+    std::shared_ptr<AstNode> parseExpr(); // Parse an expression
+    std::shared_ptr<AstNode> parseFunctionDef(); // Parse function definition
+    shared_ptr<AstNode> parseFunctionDefRaw();
 
-    // --- Recursive Descent Parsing Methods (Declarations) ---
+    shared_ptr<AstNode> parseParamsOpt();
 
-    // STARTING RULES
-    std::unique_ptr<ProgramNode> parseFile();
-    std::vector<std::unique_ptr<StatementNode>> parseStatementsOpt();
+    shared_ptr<AstNode> parseParams();
 
-    // GENERAL STATEMENTS
-    std::vector<std::unique_ptr<StatementNode>> parseStatements();
-    std::unique_ptr<StatementNode> parseStatement();
-    std::vector<std::unique_ptr<StatementNode>> parseSimpleStmts();
-    std::vector<std::unique_ptr<StatementNode>> parseSimpleStmtList();
-    std::unique_ptr<StatementNode> parseSimpleStmt();
-    std::unique_ptr<StatementNode> parseCompoundStmt();
+    shared_ptr<AstNode> parseParameters();
 
-    // SIMPLE STATEMENTS
-    std::unique_ptr<StatementNode> parseAssignment();
-    Token parseAugassign();
-    std::unique_ptr<ReturnStatementNode> parseReturnStmt();
-    std::unique_ptr<ExpressionNode> parseExpressionsOpt();
-    std::unique_ptr<ExpressionNode> parseExpressions();
-    std::unique_ptr<RaiseStatementNode> parseRaiseStmt();
-    std::unique_ptr<GlobalStatementNode> parseGlobalStmt();
-    std::unique_ptr<NonlocalStatementNode> parseNonlocalStmt();
-    std::vector<std::unique_ptr<IdentifierNode>> parseNameCommaList(int& line_start);
-    std::unique_ptr<StatementNode> parseImportStmt();
+    shared_ptr<AstNode> parseParamNoDefaultStar();
 
-    // Import statements
-    std::unique_ptr<ImportStatementNode> parseImportNameRule();
-    std::unique_ptr<ImportFromStatementNode> parseImportFromRule();
-    std::vector<std::unique_ptr<NamedImportNode>> parseDottedAsNames(int& line_start);
-    std::unique_ptr<NamedImportNode> parseDottedAsName();
-    std::string parseDottedName(int& line_start);
-    void parseImportFromTargets(std::vector<std::unique_ptr<ImportNameNode>>& names, bool& import_star, int line);
-    std::vector<std::unique_ptr<ImportNameNode>> parseImportFromAsNames(int& line_start);
-    std::unique_ptr<ImportNameNode> parseImportFromAsName(int& line_start);
+    shared_ptr<AstNode> parseParamWithDefaultStar();
 
-    // COMPOUND STATEMENTS & Common elements
-    std::unique_ptr<BlockNode> parseBlock();
-    std::unique_ptr<ClassDefinitionNode> parseClassDef();
-    void parseClassArgumentsOpt(std::vector<std::unique_ptr<ExpressionNode>>& bases, std::vector<std::unique_ptr<KeywordArgNode>>& keywords, int& line);
-    std::unique_ptr<FunctionDefinitionNode> parseFunctionDef();
-    std::unique_ptr<ArgumentsNode> parseParamsOpt(int& line_start);
-    std::unique_ptr<ArgumentsNode> parseParameters(int& line_start);
-    std::unique_ptr<ParameterNode> parseParamNoDefault(ParameterNode::Kind kind);
-    std::unique_ptr<ParameterNode> parseParamWithDefault();
-    std::unique_ptr<IdentifierNode> parseParamIdentifier();
-    std::unique_ptr<ExpressionNode> parseDefault();
-    std::unique_ptr<IfStatementNode> parseIfStmt();
-    std::unique_ptr<BlockNode> parseElseBlockOpt();
-    std::unique_ptr<WhileStatementNode> parseWhileStmt();
-    std::unique_ptr<ForStatementNode> parseForStmt();
-    std::unique_ptr<TryStatementNode> parseTryStmt();
-    std::unique_ptr<ExceptionHandlerNode> parseExceptBlock();
-    std::unique_ptr<BlockNode> parseFinallyBlockOpt();
-    std::unique_ptr<BlockNode> parseFinallyBlock();
+    shared_ptr<AstNode> parseSimplifiedStarEtcOpt();
 
-    // EXPRESSIONS
-    std::unique_ptr<ExpressionNode> parseExpression();
-    std::unique_ptr<ExpressionNode> parseDisjunction();
-    std::unique_ptr<ExpressionNode> parseConjunction();
-    std::unique_ptr<ExpressionNode> parseInversion();
-    std::unique_ptr<ExpressionNode> parseComparison();
-    std::unique_ptr<ExpressionNode> parseBitwiseOr();
-    std::unique_ptr<ExpressionNode> parseBitwiseXor();
-    std::unique_ptr<ExpressionNode> parseBitwiseAnd();
-    std::unique_ptr<ExpressionNode> parseShiftExpr();
-    std::unique_ptr<ExpressionNode> parseSum();
-    std::unique_ptr<ExpressionNode> parseTerm();
-    std::unique_ptr<ExpressionNode> parseFactor();
-    std::unique_ptr<ExpressionNode> parsePower();
-    std::unique_ptr<ExpressionNode> parsePrimary(bool in_target_context = false); // Added flag
-    std::unique_ptr<ExpressionNode> parseSlices();
-    std::unique_ptr<SliceNode> parseSlice();
-    std::unique_ptr<ExpressionNode> parseAtom(bool in_target_context = false); // Added flag
+    shared_ptr<AstNode> parseParamNoDefaultPlus();
 
-    // Literals and Atoms
-    std::unique_ptr<ExpressionNode> parseTupleGroupVariant(bool in_target_context);
-    std::unique_ptr<ListLiteralNode> parseListVariant(bool in_target_context);
-    std::unique_ptr<ExpressionNode> parseDictSetVariant();
-    std::unique_ptr<ExpressionNode> parseGroup();
-    std::unique_ptr<StringLiteralNode> parseStrings(); // Concatenates adjacent string literals
-    std::unique_ptr<BytesLiteralNode> parseBytes();     // For bytes literals
-    std::unique_ptr<ListLiteralNode> parseListLiteral(bool in_target_context);
-    std::unique_ptr<TupleLiteralNode> parseTupleLiteral(bool in_target_context);
-    std::unique_ptr<SetLiteralNode> parseSetLiteral();
-    std::unique_ptr<DictLiteralNode> parseDictLiteral();
-    void parseKvPair(std::vector<std::unique_ptr<ExpressionNode>>& keys, std::vector<std::unique_ptr<ExpressionNode>>& values, int line);
+    shared_ptr<AstNode> parseParamWithDefaultPlus();
 
-    // Arguments for function calls (CFG: arguments -> args)
-    void parseArgumentsForCall(std::vector<std::unique_ptr<ExpressionNode>>& pos_args, std::vector<std::unique_ptr<KeywordArgNode>>& kw_args, int& line);
-    std::unique_ptr<KeywordArgNode> parseKeywordItem();
+    shared_ptr<AstNode> parseSimplifiedStarEtc();
 
-    // Targets for assignment
-    std::vector<std::unique_ptr<ExpressionNode>> parseTargets();
-    std::unique_ptr<ExpressionNode> parseTarget(); // Corresponds to CFG 'target'
-    std::unique_ptr<ExpressionNode> parseTargetAtom();
-    std::unique_ptr<ExpressionNode> parseSingleTarget(); // Corresponds to CFG 'single_target'
-    std::unique_ptr<ExpressionNode> parseTPrimary();    // Corresponds to CFG 't_primary'
+    shared_ptr<AstNode> parseKwdsOpt();
 
-    // Helper for simplified_star_etc in parameters
-    void parseSimplifiedStarEtc(ArgumentsNode& args_node_ref);
+    shared_ptr<AstNode> parseKwds();
 
-    void unputToken();
+    shared_ptr<AstNode> parseParamNoDefault();
 
-    unique_ptr<StatementNode> parseAssignmentTail(vector<std::unique_ptr<ExpressionNode>> targets);
+    shared_ptr<AstNode> parseParamWithDefault();
+
+    shared_ptr<AstNode> parseParamEndingChar();
+
+    shared_ptr<AstNode> parseDefault();
+
+    shared_ptr<AstNode> parseParam();
+
+    std::shared_ptr<AstNode> parseIfStmt(); // Parse if statement
+    shared_ptr<AstNode> parseElifStmt();
+
+    // Add more parsing methods for other constructs (while, for, class, etc.)
+
+    void reportError(const std::string& message);
 };
 
 #endif // PARSER_HPP
