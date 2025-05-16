@@ -14,4 +14,6 @@ add_executable(Python_Compiler main.cpp
         include/Expressions.hpp
         include/Literals.hpp
         include/Statements.hpp
-        include/Helpers.hpp)
+        include/Helpers.hpp
+        Parser/Parser.cpp
+        include/Parser.hpp)

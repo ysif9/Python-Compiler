@@ -121,6 +121,11 @@ class_def_raw: TK_CLASS TK_IDENTIFIER class_arguments_opt TK_COLON block
 class_arguments_opt: TK_LPAREN arguments_opt TK_RPAREN | epsilon
 arguments_opt: arguments | epsilon
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 # Function definitions
 # --------------------
 
