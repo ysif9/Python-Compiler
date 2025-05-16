@@ -6,11 +6,11 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <utility>         // For std::pair in IfStatementNode elif_blocks
+#include <utility>
 
 // Forward declarations from other AST files
 #include "Expressions.hpp" // For ExpressionNode, IdentifierNode, etc.
-#include "UtilNodes.hpp"   // For ArgumentsNode, ParameterNode, TypeHintNode
+#include "UtilNodes.hpp"   // For ArgumentsNode, ParameterNode
 #include "Helpers.hpp"     // For KeywordArgNode
 
 
@@ -45,14 +45,8 @@ public:
 
 // --- Basic Statements ---
 
-// For simple assignment: targets = value
 class AssignmentStatementNode : public StatementNode {
 public:
-    // Python allows multiple targets: a, b = value or a = b = value (chained)
-    // Grammar: star_targets_eq_plus yield_expr_or_star_expressions -> (star_targets '=')* star_expressions
-    // For a = b = c, it's one AST.Assign(targets=[a,b], value=c)
-    // For a,b = c,d it's AST.Assign(targets=[Tuple(a,b)], value=Tuple(c,d)) or similar.
-    // Let targets be a list, parser forms tuples for complex LHS if needed.
     std::vector<std::unique_ptr<ExpressionNode>> targets;
     std::unique_ptr<ExpressionNode> value;
 
@@ -63,22 +57,7 @@ public:
     std::string getNodeName() const override { return "AssignmentStatementNode"; }
 };
 
-// For annotated assignment: target: annotation [= value]
-class AnnAssignNode : public StatementNode {
-public:
-    std::unique_ptr<ExpressionNode> target;      // Must be Name, Attribute, or Subscript
-    std::unique_ptr<ExpressionNode> annotation;
-    std::unique_ptr<ExpressionNode> value;       // Optional
-    bool simple; // True if target is a simple Name and not in parens (for var annotations in class/module scope without assignment)
-
-    AnnAssignNode(int line, std::unique_ptr<ExpressionNode> tgt, std::unique_ptr<ExpressionNode> ann,
-                  std::unique_ptr<ExpressionNode> val = nullptr, bool is_simple = false)
-            : StatementNode(line), target(std::move(tgt)), annotation(std::move(ann)),
-              value(std::move(val)), simple(is_simple) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "AnnAssignNode"; }
-};
+// REMOVED: class AnnAssignNode
 
 // For augmented assignment: target op= value (e.g. x += 1)
 class AugAssignNode : public StatementNode {
@@ -114,35 +93,11 @@ public:
     std::string getNodeName() const override { return "PassStatementNode"; }
 };
 
-class DelStatementNode : public StatementNode {
-public:
-    std::vector<std::unique_ptr<ExpressionNode>> targets;
-
-    DelStatementNode(int line, std::vector<std::unique_ptr<ExpressionNode>> tgts)
-            : StatementNode(line), targets(std::move(tgts)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "DelStatementNode"; }
-};
-
-class AssertStatementNode : public StatementNode {
-public:
-    std::unique_ptr<ExpressionNode> test;
-    std::unique_ptr<ExpressionNode> message; // Optional message
-
-    AssertStatementNode(int line, std::unique_ptr<ExpressionNode> test_expr, std::unique_ptr<ExpressionNode> msg_expr = nullptr)
-            : StatementNode(line), test(std::move(test_expr)), message(std::move(msg_expr)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "AssertStatementNode"; }
-};
-
 // --- Control Flow Statements ---
 class IfStatementNode : public StatementNode {
 public:
     std::unique_ptr<ExpressionNode> condition;
     std::unique_ptr<BlockNode> then_block;
-    // elif branches: list of (condition, block) pairs
     std::vector<std::pair<std::unique_ptr<ExpressionNode>, std::unique_ptr<BlockNode>>> elif_blocks;
     std::unique_ptr<BlockNode> else_block; // Optional
 
@@ -173,17 +128,16 @@ public:
 
 class ForStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> target; // Loop variable(s) (can be tuple, Name, etc.)
-    std::unique_ptr<ExpressionNode> iterable; // Expression to iterate over
+    std::unique_ptr<ExpressionNode> target;
+    std::unique_ptr<ExpressionNode> iterable;
     std::unique_ptr<BlockNode> body;
-    std::unique_ptr<BlockNode> else_block; // Optional 'else' clause for for loop
-    bool is_async;
+    std::unique_ptr<BlockNode> else_block;
 
     ForStatementNode(int line, std::unique_ptr<ExpressionNode> target_expr, std::unique_ptr<ExpressionNode> iter_expr,
-                     std::unique_ptr<BlockNode> body_block, bool async_val = false,
+                     std::unique_ptr<BlockNode> body_block, /* Removed async_val */
                      std::unique_ptr<BlockNode> else_blk = nullptr)
             : StatementNode(line), target(std::move(target_expr)), iterable(std::move(iter_expr)),
-              body(std::move(body_block)), else_block(std::move(else_blk)), is_async(async_val) {}
+              body(std::move(body_block)), else_block(std::move(else_blk)) {} // Removed is_async init
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ForStatementNode"; }
@@ -207,7 +161,7 @@ public:
 
 class ReturnStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> value; // Optional (nullptr for 'return' without value)
+    std::unique_ptr<ExpressionNode> value; // Optional
 
     ReturnStatementNode(int line, std::unique_ptr<ExpressionNode> val_expr = nullptr)
             : StatementNode(line), value(std::move(val_expr)) {}
@@ -218,8 +172,8 @@ public:
 
 class RaiseStatementNode : public StatementNode {
 public:
-    std::unique_ptr<ExpressionNode> exception; // Optional (e.g., bare 'raise')
-    std::unique_ptr<ExpressionNode> cause;     // Optional (for 'raise X from Y')
+    std::unique_ptr<ExpressionNode> exception;
+    std::unique_ptr<ExpressionNode> cause;
 
     RaiseStatementNode(int line, std::unique_ptr<ExpressionNode> exc_expr = nullptr, std::unique_ptr<ExpressionNode> cause_expr = nullptr)
             : StatementNode(line), exception(std::move(exc_expr)), cause(std::move(cause_expr)) {}
@@ -232,21 +186,15 @@ public:
 class FunctionDefinitionNode : public StatementNode {
 public:
     std::unique_ptr<IdentifierNode> name;
-    std::unique_ptr<ArgumentsNode> arguments_spec; // From UtilNodes.hpp, captures all param details
+    std::unique_ptr<ArgumentsNode> arguments_spec;
     std::unique_ptr<BlockNode> body;
-    std::vector<std::unique_ptr<ExpressionNode>> decorators;
-    std::unique_ptr<ExpressionNode> return_annotation; // Optional, type hint for return
-    bool is_async;
 
     FunctionDefinitionNode(int line, std::unique_ptr<IdentifierNode> func_name,
                            std::unique_ptr<ArgumentsNode> args_spec,
-                           std::unique_ptr<BlockNode> func_body,
-                           std::vector<std::unique_ptr<ExpressionNode>> decs = {},
-                           std::unique_ptr<ExpressionNode> ret_ann = nullptr,
-                           bool async_val = false)
+                           std::unique_ptr<BlockNode> func_body
+            /* Removed decorators, ret_ann, async_val */)
             : StatementNode(line), name(std::move(func_name)), arguments_spec(std::move(args_spec)),
-              body(std::move(func_body)), decorators(std::move(decs)),
-              return_annotation(std::move(ret_ann)), is_async(async_val) {}
+              body(std::move(func_body)) {} /* Removed init for decorators, return_annotation, is_async */
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "FunctionDefinitionNode"; }
@@ -255,32 +203,27 @@ public:
 class ClassDefinitionNode : public StatementNode {
 public:
     std::unique_ptr<IdentifierNode> name;
-    std::vector<std::unique_ptr<ExpressionNode>> base_classes; // List of base class expressions
-    std::vector<std::unique_ptr<KeywordArgNode>> keywords; // For metaclass, etc. (e.g. metaclass=MyMeta)
+    std::vector<std::unique_ptr<ExpressionNode>> base_classes;
+    std::vector<std::unique_ptr<KeywordArgNode>> keywords;
     std::unique_ptr<BlockNode> body;
-    std::vector<std::unique_ptr<ExpressionNode>> decorators;
 
     ClassDefinitionNode(int line, std::unique_ptr<IdentifierNode> class_name,
                         std::vector<std::unique_ptr<ExpressionNode>> bases,
                         std::vector<std::unique_ptr<KeywordArgNode>> class_keywords,
-                        std::unique_ptr<BlockNode> class_body,
-                        std::vector<std::unique_ptr<ExpressionNode>> decs = {})
+                        std::unique_ptr<BlockNode> class_body
+            /* Removed decorators */)
             : StatementNode(line), name(std::move(class_name)), base_classes(std::move(bases)),
-              keywords(std::move(class_keywords)), body(std::move(class_body)), decorators(std::move(decs)) {}
+              keywords(std::move(class_keywords)), body(std::move(class_body)) {} /* Removed init for decorators */
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ClassDefinitionNode"; }
 };
 
 // --- Import Statements ---
-// Helper for 'import foo as bar' or 'foo.bar as baz'
-class NamedImportNode : public ASTNode { // Not a statement itself; part of ImportStatement
+class NamedImportNode : public ASTNode {
 public:
-    // Dotted name like 'module.submodule' will be parsed into an ExpressionNode (e.g. AttrAccess or special DottedNameNode)
-    // Python AST stores 'name' as string (e.g., "a.b.c")
-    // Let's use string for simplicity, parser converts dotted Identifiers to string
     std::string module_path_str;
-    std::unique_ptr<IdentifierNode> alias;      // Optional (nullptr if no 'as alias')
+    std::unique_ptr<IdentifierNode> alias;
 
     NamedImportNode(int line, std::string path_str, std::unique_ptr<IdentifierNode> alias_node = nullptr)
             : ASTNode(line), module_path_str(std::move(path_str)), alias(std::move(alias_node)) {}
@@ -300,11 +243,10 @@ public:
     std::string getNodeName() const override { return "ImportStatementNode"; }
 };
 
-// Helper for 'from foo import bar as baz'
-class ImportNameNode : public ASTNode { // Not a statement itself; part of ImportFromStatement
+class ImportNameNode : public ASTNode {
 public:
-    std::string name_str; // Name being imported (e.g., "bar")
-    std::unique_ptr<IdentifierNode> alias; // Optional (nullptr if no 'as alias')
+    std::string name_str;
+    std::unique_ptr<IdentifierNode> alias;
 
     ImportNameNode(int line, std::string imported_name_str, std::unique_ptr<IdentifierNode> alias_node = nullptr)
             : ASTNode(line), name_str(std::move(imported_name_str)), alias(std::move(alias_node)) {}
@@ -313,13 +255,12 @@ public:
     std::string getNodeName() const override { return "ImportNameNode"; }
 };
 
-class ImportFromStatementNode : public StatementNode { // 'from .module import name as alias, *'
+class ImportFromStatementNode : public StatementNode {
 public:
-    int level; // Number of leading dots for relative import (0 for absolute)
-    // Module name; optional for 'from . import foo'. Use string for simplicity (parser handles dotted names).
-    std::string module_str; // Can be empty for "from . import ..."
-    std::vector<std::unique_ptr<ImportNameNode>> names; // List of names to import; empty if import_star is true
-    bool import_star; // True if 'from module import *'
+    int level;
+    std::string module_str;
+    std::vector<std::unique_ptr<ImportNameNode>> names;
+    bool import_star;
 
     ImportFromStatementNode(int line, int lvl, std::string mod_str,
                             std::vector<std::unique_ptr<ImportNameNode>> import_names, bool star = false)
@@ -354,13 +295,12 @@ public:
 };
 
 // --- Exception Handling ---
-// Helper for 'except Foo as bar:' or 'except* Foo as bar:'
-class ExceptionHandlerNode : public ASTNode { // Not a statement itself; part of TryStatement
+class ExceptionHandlerNode : public ASTNode {
 public:
-    std::unique_ptr<ExpressionNode> type; // Optional (nullptr for bare 'except:')
-    std::unique_ptr<IdentifierNode> name; // Optional (for 'as e')
+    std::unique_ptr<ExpressionNode> type;
+    std::unique_ptr<IdentifierNode> name;
     std::unique_ptr<BlockNode> body;
-    bool is_star_handler; // True for 'except*' from Python 3.11+ (grammar has except_star_block)
+    bool is_star_handler; // Kept: CFG has distinct except_star_block
 
     ExceptionHandlerNode(int line, std::unique_ptr<BlockNode> handler_body,
                          std::unique_ptr<ExpressionNode> exc_type = nullptr,
@@ -377,9 +317,8 @@ class TryStatementNode : public StatementNode {
 public:
     std::unique_ptr<BlockNode> try_block;
     std::vector<std::unique_ptr<ExceptionHandlerNode>> handlers;
-    std::unique_ptr<BlockNode> else_block;    // Optional
-    std::unique_ptr<BlockNode> finally_block; // Optional
-    // bool is_try_star; // Python 3.11 TryStar - handled by is_star_handler on ExceptionHandlerNode for now
+    std::unique_ptr<BlockNode> else_block;
+    std::unique_ptr<BlockNode> finally_block;
 
     TryStatementNode(int line, std::unique_ptr<BlockNode> try_b,
                      std::vector<std::unique_ptr<ExceptionHandlerNode>> ex_handlers,
@@ -391,34 +330,4 @@ public:
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "TryStatementNode"; }
 };
-
-// --- Context Managers ---
-// Helper for 'with foo as bar:'
-class WithItemNode : public ASTNode { // Not a statement itself; part of WithStatement
-public:
-    std::unique_ptr<ExpressionNode> context_expr;
-    std::unique_ptr<ExpressionNode> as_target;   // Optional (for 'as target'), can be Name, Tuple, etc.
-
-    WithItemNode(int line, std::unique_ptr<ExpressionNode> ctx_expr, std::unique_ptr<ExpressionNode> target_expr = nullptr)
-            : ASTNode(line), context_expr(std::move(ctx_expr)), as_target(std::move(target_expr)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "WithItemNode"; }
-};
-
-class WithStatementNode : public StatementNode {
-public:
-    std::vector<std::unique_ptr<WithItemNode>> items;
-    std::unique_ptr<BlockNode> body;
-    bool is_async;
-
-    WithStatementNode(int line, std::vector<std::unique_ptr<WithItemNode>> with_items,
-                      std::unique_ptr<BlockNode> with_body, bool async_val = false)
-            : StatementNode(line), items(std::move(with_items)), body(std::move(with_body)), is_async(async_val) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "WithStatementNode"; }
-};
-
-
 #endif // STATEMENTS_HPP

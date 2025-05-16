@@ -1,16 +1,14 @@
 #ifndef LITERALS_HPP
 #define LITERALS_HPP
 
-#include "Expressions.hpp" // For ExpressionNode base
+#include "Expressions.hpp"
 #include <string>
-#include <variant> // For NumberLiteralNode if used
+#include <variant>
 
 class NumberLiteralNode : public ExpressionNode {
 public:
-    // Store value as string to preserve original format (e.g. hex, leading zeros if necessary for some tools)
-    // Or use a variant if direct numeric value is preferred: std::variant<long long, double> value;
     std::string value_str;
-    enum class Type { INTEGER, FLOAT } type; // Simplified
+    enum class Type { INTEGER, FLOAT } type;
 
     NumberLiteralNode(int line, std::string val_str, Type t)
             : ExpressionNode(line), value_str(std::move(val_str)), type(t) {}
@@ -21,11 +19,7 @@ public:
 
 class StringLiteralNode : public ExpressionNode {
 public:
-    // For concatenated strings "a" "b", lexer/parser should join them
-    // This holds the final string value
     std::string value;
-    // Add prefix, is_raw, is_bytes, is_unicode flags if needed, but grammar simplified.
-    // Current grammar has TK_STRING and TK_BYTES tokens.
 
     StringLiteralNode(int line, std::string val)
             : ExpressionNode(line), value(std::move(val)) {}
@@ -36,7 +30,7 @@ public:
 
 class BytesLiteralNode : public ExpressionNode {
 public:
-    std::string value; // Represents the content of bytes literal, prefixes b'' handled by lexer.
+    std::string value;
 
     BytesLiteralNode(int line, std::string val)
             : ExpressionNode(line), value(std::move(val)) {}
@@ -66,10 +60,8 @@ public:
 
 class ComplexLiteralNode : public ExpressionNode {
 public:
-    // Storing as strings as precision and original form might matter
     std::string real_part_str;
     std::string imag_part_str;
-    // Or: double real; double imag;
 
     ComplexLiteralNode(int line, std::string real_str, std::string imag_str)
             : ExpressionNode(line), real_part_str(std::move(real_str)), imag_part_str(std::move(imag_str)) {}

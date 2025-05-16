@@ -47,19 +47,14 @@ class UnaryOpNode;
 class FunctionCallNode;
 class AttributeAccessNode;
 class SubscriptionNode;
-class AssignmentExpressionNode; // for :=
-class IfExpNode;                // Added: Ternary if expression
-class LambdaNode;               // Added
-class YieldExprNode;            // Added
-class YieldFromNode;            // Added
-class StarExprNode;             // Added: *expr or **expr
-class ComparisonNode;           // Added: For chained comparisons
-class SliceNode;                // Added: For array/list slicing
-class ListCompNode;             // Added
-class SetCompNode;              // Added
-class DictCompNode;             // Added
-class GeneratorExpNode;         // Added
-class AwaitExprNode;            // Added
+// class AssignmentExpressionNode; // REMOVED: Not in CFG (walrus :=)
+class IfExpNode;                // Ternary if expression
+class StarExprNode;             // *expr or **expr
+class ComparisonNode;           // For chained comparisons
+class SliceNode;                // For array/list slicing
+class ListCompNode;             // [x for x in y]
+class SetCompNode;              // {x for x in y}
+class DictCompNode;             // {k:v for k,v in y}
 
 // Statements
 class StatementNode;
@@ -78,27 +73,21 @@ class BreakStatementNode;
 class ContinueStatementNode;
 class ImportStatementNode;
 class ImportFromStatementNode;
-class DelStatementNode;
 class GlobalStatementNode;
 class NonlocalStatementNode;
-class AssertStatementNode;
 class TryStatementNode;
 class RaiseStatementNode;
-class WithStatementNode;
-class AnnAssignNode;            // Added: Annotated assignment
-class AugAssignNode;            // Added: Augmented assignment
+class AugAssignNode;            // Augmented assignment
 
 
 // Utility and Helper Nodes
 class ParameterNode;
-class TypeHintNode;
-class ArgumentsNode;            // Added: For function arguments structure
-class KeywordArgNode;           // Added: For name=value pairs (e.g., function calls)
+class ArgumentsNode;            // For function arguments structure
+class KeywordArgNode;           // For name=value pairs (e.g., function calls)
 class NamedImportNode;
 class ImportNameNode;
 class ExceptionHandlerNode;
-class WithItemNode;
-class ComprehensionGeneratorNode; // Added: Helper for comprehensions
+class ComprehensionGeneratorNode; // Helper for comprehensions
 
 
 // ASTVisitor interface: declares a visit method for each concrete AST node type.
@@ -127,20 +116,13 @@ public:
     virtual void visit(FunctionCallNode* node) = 0;
     virtual void visit(AttributeAccessNode* node) = 0;
     virtual void visit(SubscriptionNode* node) = 0;
-    virtual void visit(AssignmentExpressionNode* node) = 0;
     virtual void visit(IfExpNode* node) = 0;
-    virtual void visit(LambdaNode* node) = 0;
-    virtual void visit(YieldExprNode* node) = 0;
-    virtual void visit(YieldFromNode* node) = 0;
     virtual void visit(StarExprNode* node) = 0;
     virtual void visit(ComparisonNode* node) = 0;
     virtual void visit(SliceNode* node) = 0;
     virtual void visit(ListCompNode* node) = 0;
     virtual void visit(SetCompNode* node) = 0;
     virtual void visit(DictCompNode* node) = 0;
-    virtual void visit(GeneratorExpNode* node) = 0;
-    virtual void visit(AwaitExprNode* node) = 0;
-
 
     // Visit methods for Statements
     virtual void visit(ProgramNode* node) = 0;
@@ -158,26 +140,20 @@ public:
     virtual void visit(ContinueStatementNode* node) = 0;
     virtual void visit(ImportStatementNode* node) = 0;
     virtual void visit(ImportFromStatementNode* node) = 0;
-    virtual void visit(DelStatementNode* node) = 0;
     virtual void visit(GlobalStatementNode* node) = 0;
     virtual void visit(NonlocalStatementNode* node) = 0;
-    virtual void visit(AssertStatementNode* node) = 0;
     virtual void visit(TryStatementNode* node) = 0;
     virtual void visit(RaiseStatementNode* node) = 0;
-    virtual void visit(WithStatementNode* node) = 0;
-    virtual void visit(AnnAssignNode* node) = 0;
     virtual void visit(AugAssignNode* node) = 0;
 
 
     // Visit methods for Utility and Helper Nodes
     virtual void visit(ParameterNode* node) = 0;
-    virtual void visit(TypeHintNode* node) = 0;
     virtual void visit(ArgumentsNode* node) = 0;
     virtual void visit(KeywordArgNode* node) = 0;
     virtual void visit(NamedImportNode* node) = 0;
     virtual void visit(ImportNameNode* node) = 0;
     virtual void visit(ExceptionHandlerNode* node) = 0;
-    virtual void visit(WithItemNode* node) = 0;
     virtual void visit(ComprehensionGeneratorNode* node) = 0;
 
 };

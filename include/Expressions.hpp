@@ -19,8 +19,6 @@ public:
     ExpressionNode(int line) : ASTNode(line) {}
 };
 
-// Concrete Expression Nodes
-
 class IdentifierNode : public ExpressionNode {
 public:
     std::string name;
@@ -74,12 +72,7 @@ public:
 class FunctionCallNode : public ExpressionNode {
 public:
     std::unique_ptr<ExpressionNode> callee;
-    // Arguments can be regular expressions or StarExprNode (for *iterable)
     std::vector<std::unique_ptr<ExpressionNode>> args;
-    // Keyword arguments. For **dict, a KeywordArgNode with name=nullptr and value=dict_expr is used,
-    // or more distinctly, its value expression itself could be a StarExprNode(kind=DOUBLE_STAR)
-    // Python's AST: keywords is a list of `keyword = (identifier? arg, expr value)`.
-    // So a KeywordArgNode whose `name` is null could signify `**expr`.
     std::vector<std::unique_ptr<KeywordArgNode>> keywords;
 
     FunctionCallNode(int line, std::unique_ptr<ExpressionNode> callee_expr,
@@ -121,7 +114,6 @@ public:
 class SubscriptionNode : public ExpressionNode { // obj[index]
 public:
     std::unique_ptr<ExpressionNode> object;
-    // Index can be a simple expression, a SliceNode, or even a tuple of these (parser creates TupleLiteralNode for index)
     std::unique_ptr<ExpressionNode> slice_or_index;
 
     SubscriptionNode(int line, std::unique_ptr<ExpressionNode> obj_expr, std::unique_ptr<ExpressionNode> index_expr)
@@ -134,7 +126,6 @@ public:
 // Collection Literals
 class ListLiteralNode : public ExpressionNode {
 public:
-    // Elements can include StarExprNode for unpacking
     std::vector<std::unique_ptr<ExpressionNode>> elements;
 
     ListLiteralNode(int line, std::vector<std::unique_ptr<ExpressionNode>> elems)
@@ -146,7 +137,6 @@ public:
 
 class TupleLiteralNode : public ExpressionNode {
 public:
-    // Elements can include StarExprNode for unpacking
     std::vector<std::unique_ptr<ExpressionNode>> elements;
 
     TupleLiteralNode(int line, std::vector<std::unique_ptr<ExpressionNode>> elems)
@@ -170,7 +160,6 @@ public:
     KeyValuePairNode(int line, std::unique_ptr<ExpressionNode> k, std::unique_ptr<ExpressionNode> v)
             : DictElementNode(line), key(std::move(k)), value(std::move(v)) {}
 
-    // This node itself might not be visited if DictLiteralNode handles iteration. If it is:
     // void accept(ASTVisitor* visitor) override { visitor->visit(this); } // Requires visitor method
     std::string getNodeName() const override { return "KeyValuePairNode"; }
 };
@@ -189,9 +178,7 @@ public:
 
 class DictLiteralNode : public ExpressionNode {
 public:
-    // Python AST: keys and values are separate lists. For key=None, it's a dict expansion.
-    // Here, `keys` can contain nullptr for `**expr`, with corresponding `values` being the expr.
-    std::vector<std::unique_ptr<ExpressionNode>> keys; // nullptr for dict unpacking `**expr`
+    std::vector<std::unique_ptr<ExpressionNode>> keys;
     std::vector<std::unique_ptr<ExpressionNode>> values;
 
     DictLiteralNode(int line, std::vector<std::unique_ptr<ExpressionNode>> dict_keys,
@@ -204,7 +191,6 @@ public:
 
 class SetLiteralNode : public ExpressionNode {
 public:
-    // Elements can include StarExprNode for unpacking
     std::vector<std::unique_ptr<ExpressionNode>> elements;
 
     SetLiteralNode(int line, std::vector<std::unique_ptr<ExpressionNode>> elems)
@@ -213,20 +199,6 @@ public:
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "SetLiteralNode"; }
 };
-
-// Walrus operator :=
-class AssignmentExpressionNode : public ExpressionNode {
-public:
-    std::unique_ptr<IdentifierNode> target; // Must be an identifier
-    std::unique_ptr<ExpressionNode> value;
-
-    AssignmentExpressionNode(int line, std::unique_ptr<IdentifierNode> target_ident, std::unique_ptr<ExpressionNode> val_expr)
-            : ExpressionNode(line), target(std::move(target_ident)), value(std::move(val_expr)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "AssignmentExpressionNode"; }
-};
-
 // Ternary: value_if_true IF condition ELSE value_if_false
 class IfExpNode : public ExpressionNode {
 public:
@@ -239,40 +211,6 @@ public:
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "IfExpNode"; }
-};
-
-class LambdaNode : public ExpressionNode {
-public:
-    std::unique_ptr<ArgumentsNode> arguments_spec; // From UtilNodes.hpp
-    std::unique_ptr<ExpressionNode> body;
-
-    LambdaNode(int line, std::unique_ptr<ArgumentsNode> args, std::unique_ptr<ExpressionNode> b)
-            : ExpressionNode(line), arguments_spec(std::move(args)), body(std::move(b)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "LambdaNode"; }
-};
-
-class YieldExprNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> value; // Optional (yield None if nullptr)
-
-    YieldExprNode(int line, std::unique_ptr<ExpressionNode> val = nullptr)
-            : ExpressionNode(line), value(std::move(val)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "YieldExprNode"; }
-};
-
-class YieldFromNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> value; // The expression to yield from
-
-    YieldFromNode(int line, std::unique_ptr<ExpressionNode> val)
-            : ExpressionNode(line), value(std::move(val)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "YieldFromNode"; }
 };
 
 // For chained comparisons: left op1 comp1 op2 comp2 ...
@@ -291,17 +229,16 @@ public:
     std::string getNodeName() const override { return "ComparisonNode"; }
 };
 
-// Helper for comprehensions: 'for target in iter [if cond1 [if cond2 ...]]' or 'async for ...'
+// Helper for comprehensions: 'for target in iter [if cond1 [if cond2 ...]]'
 class ComprehensionGeneratorNode : public ASTNode { // Not an expression itself
 public:
     std::unique_ptr<ExpressionNode> target;   // LHS of 'in'
     std::unique_ptr<ExpressionNode> iter;     // RHS of 'in'
     std::vector<std::unique_ptr<ExpressionNode>> ifs; // Conditions
-    bool is_async;
 
     ComprehensionGeneratorNode(int line, std::unique_ptr<ExpressionNode> t, std::unique_ptr<ExpressionNode> i,
-                               std::vector<std::unique_ptr<ExpressionNode>> conditions, bool async_val)
-            : ASTNode(line), target(std::move(t)), iter(std::move(i)), ifs(std::move(conditions)), is_async(async_val) {}
+                               std::vector<std::unique_ptr<ExpressionNode>> conditions) // Removed async_val
+            : ASTNode(line), target(std::move(t)), iter(std::move(i)), ifs(std::move(conditions)) {} // Removed is_async init
 
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "ComprehensionGeneratorNode"; }
@@ -346,30 +283,4 @@ public:
     void accept(ASTVisitor* visitor) override { visitor->visit(this); }
     std::string getNodeName() const override { return "DictCompNode"; }
 };
-
-class GeneratorExpNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> elt;
-    std::vector<std::unique_ptr<ComprehensionGeneratorNode>> generators;
-
-    GeneratorExpNode(int line, std::unique_ptr<ExpressionNode> element_expr,
-                     std::vector<std::unique_ptr<ComprehensionGeneratorNode>> gens)
-            : ExpressionNode(line), elt(std::move(element_expr)), generators(std::move(gens)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "GeneratorExpNode"; }
-};
-
-class AwaitExprNode : public ExpressionNode {
-public:
-    std::unique_ptr<ExpressionNode> value; // Expression being awaited
-
-    AwaitExprNode(int line, std::unique_ptr<ExpressionNode> val)
-            : ExpressionNode(line), value(std::move(val)) {}
-
-    void accept(ASTVisitor* visitor) override { visitor->visit(this); }
-    std::string getNodeName() const override { return "AwaitExprNode"; }
-};
-
-
 #endif // EXPRESSIONS_HPP
