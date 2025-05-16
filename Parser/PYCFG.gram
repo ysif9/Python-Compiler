@@ -24,8 +24,6 @@ simple_stmt:
     | import_stmt
     | raise_stmt
     | TK_PASS
-    | del_stmt
-    | assert_stmt
     | TK_BREAK
     | TK_CONTINUE
     | global_stmt
@@ -67,11 +65,6 @@ nonlocal_stmt: TK_NONLOCAL name_comma_list
 
 name_comma_list: TK_IDENTIFIER name_comma_list_tail_star
 name_comma_list_tail_star: TK_COMMA TK_IDENTIFIER name_comma_list_tail_star | epsilon
-
-del_stmt: TK_DEL del_targets
-
-assert_stmt: TK_ASSERT expression assert_comma_expr_opt
-assert_comma_expr_opt: TK_COMMA expression | epsilon
 
 import_stmt: import_name | import_from
 
@@ -133,6 +126,8 @@ arguments_opt: arguments | epsilon
 
 function_def: function_def_raw
 
+# Note: TK_ASYNC prefix for function_def_raw is assumed not to be part of this grammar
+# or handled at a token level not shown. If it were explicit, it would be removed here.
 function_def_raw: TK_DEF TK_IDENTIFIER TK_LPAREN params_opt TK_RPAREN TK_COLON block
 
 params_opt: params | epsilon
@@ -204,12 +199,13 @@ while_stmt: TK_WHILE named_expression TK_COLON block else_block_opt
 
 # For statement
 # -------------
-
+# Note: TK_ASYNC prefix for for_stmt is assumed not to be part of this grammar.
 for_stmt: TK_FOR star_targets TK_IN star_expressions TK_COLON block else_block_opt
 
 # Try statement
 # -------------
-
+# Note: TK_ASYNC prefix for with_stmt (if it existed) would be removed.
+# try_stmt does not have an async variant in Python syntax in the same way.
 try_stmt:
     | TK_TRY TK_COLON block finally_block
     | TK_TRY TK_COLON block except_block_plus else_block_opt finally_block_opt
@@ -264,9 +260,7 @@ star_named_expression_comma_list_tail_star: TK_COMMA star_named_expression star_
 
 star_named_expression: TK_MULTIPLY bitwise_or | named_expression
 
-assignment_expression: TK_IDENTIFIER TK_WALNUT expression
-
-named_expression: assignment_expression | expression
+named_expression: expression
 
 disjunction: conjunction disjunction_tail_star
 disjunction_tail_star: TK_OR conjunction disjunction_tail_star | epsilon
@@ -303,9 +297,9 @@ shift_expr: shift_expr TK_BIT_LEFT_SHIFT sum | shift_expr TK_BIT_RIGHT_SHIFT sum
 sum: sum TK_PLUS term | sum TK_MINUS term | term
 term: term TK_MULTIPLY factor | term TK_DIVIDE factor | term TK_FLOORDIV factor | term TK_MOD factor | term TK_MATMUL factor | factor
 factor: TK_PLUS factor | TK_MINUS factor | TK_BIT_NOT factor | power
-power: await_primary TK_POWER factor | await_primary
 
-await_primary: primary
+power: primary TK_POWER factor | primary
+
 primary:
     | primary TK_PERIOD TK_IDENTIFIER
     | primary TK_LPAREN arguments_opt TK_RPAREN
@@ -378,6 +372,7 @@ for_if_clauses: for_if_clause_plus
 for_if_clause_plus: for_if_clause for_if_clause_plus_star
 for_if_clause_plus_star: for_if_clause for_if_clause_plus_star | epsilon
 
+# Note: TK_ASYNC prefix for for_if_clause is assumed not to be part of this grammar.
 for_if_clause: TK_FOR star_targets TK_IN disjunction for_if_clause_if_disjunction_star
 for_if_clause_if_disjunction_star: TK_IF disjunction for_if_clause_if_disjunction_star | epsilon
 
@@ -399,7 +394,7 @@ args_comma_kwargs_opt: TK_COMMA kwargs | epsilon
 
 args_main_sequence: arg_item args_main_sequence_tail_star
 args_main_sequence_tail_star: TK_COMMA arg_item args_main_sequence_tail_star | epsilon
-arg_item: starred_expression | named_expression
+arg_item: starred_expression | named_expression # named_expression is now just expression
 
 kwargs:
     | kwarg_or_starred_comma_list TK_COMMA kwarg_or_double_starred_comma_list
@@ -435,8 +430,6 @@ star_target_comma_list_plus: TK_COMMA star_target star_target_comma_list_star
 
 star_target: TK_MULTIPLY unstarred_star_target | target_with_star_atom
 unstarred_star_target: star_target
-
-
 target_with_star_atom:
     | t_primary TK_PERIOD TK_IDENTIFIER
     | t_primary TK_LBRACKET slices TK_RBRACKET
@@ -464,22 +457,6 @@ t_primary:
     | t_primary TK_LBRACKET slices TK_RBRACKET
     | t_primary TK_LPAREN arguments_opt TK_RPAREN
     | atom
-
-del_targets: del_target_comma_list optional_comma
-del_target_comma_list: del_target del_target_comma_list_tail_star
-del_target_comma_list_tail_star: TK_COMMA del_target del_target_comma_list_tail_star | epsilon
-
-del_target:
-    | t_primary TK_PERIOD TK_IDENTIFIER
-    | t_primary TK_LBRACKET slices TK_RBRACKET
-    | del_t_atom
-
-del_t_atom:
-    | TK_IDENTIFIER
-    | TK_LPAREN del_target TK_RPAREN
-    | TK_LPAREN del_targets_opt TK_RPAREN
-    | TK_LBRACKET del_targets_opt TK_RBRACKET
-del_targets_opt: del_targets | epsilon
 
 
 # ========================= END OF THE MODIFIED GRAMMAR ===========================
