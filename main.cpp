@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
 
-    ThemeUtility::setupDarkModePalette(a);; // Apply dark theme
+    ThemeUtility::setupDarkModePalette(a);
 
     MainWindow w;
     w.show();

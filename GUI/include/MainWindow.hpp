@@ -111,6 +111,10 @@ private:
 
     void disableLexerResultActions();
 
+    void runParser();
+
+    void showParserTree();
+
     CodeEditor *editor;
     PythonHighlighter *highlighter;
     FindReplaceDialog *findDialog;
@@ -127,6 +131,7 @@ private:
     QMenu *editMenu;
     QMenu *searchMenu;
     QMenu *lexerMenu;
+    QMenu *parserMenu;
     QMenu *helpMenu;
 
     // Actions
@@ -146,7 +151,9 @@ private:
     QAction *runAct;
     QAction *viewSymbolTableAct;
     QAction *viewTokenSequenceAct; // Action for the token sequence view
-    // *** End Lexer Actions ***
+    // *** Parser Actions ***
+    QAction *parseAct;
+    QAction *viewParserTreeAct;
     QAction *aboutAct;
     QAction *aboutQtAct;
 };

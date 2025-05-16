@@ -35,6 +35,8 @@ set(SOURCES
         # Compiler backend
         Lexer/Lexer.cpp
         GUI/ThemeUtility.cpp
+        GUI/ParserTreeDialog.cpp
+        GUI/include/ParserTreeDialog.hpp
 )
 
 # Header files (for Qt's MOC)
@@ -51,6 +53,8 @@ set(HEADERS
         include/Lexer.hpp
         include/Token.hpp
         GUI/include/ThemeUtility.hpp
+        GUI/ParserTreeDialog.cpp
+        GUI/include/ParserTreeDialog.hpp
 )
 
 add_executable(Python_Compiler ${SOURCES} ${HEADERS})

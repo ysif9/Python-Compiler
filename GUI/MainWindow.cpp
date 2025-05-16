@@ -25,6 +25,8 @@
 #include <QSaveFile>
 #include <QDir>
 
+#include "ParserTreeDialog.hpp"
+
 using namespace std;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -37,6 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
       editMenu(nullptr),
       searchMenu(nullptr),
       lexerMenu(nullptr),
+      parserMenu(nullptr),
       helpMenu(nullptr),
       // Initialize file action pointers
       newAct(nullptr),
@@ -426,6 +429,7 @@ void MainWindow::updateUndoRedoActions() const {
 void MainWindow::updateLexerActionsState() {
     const bool hasText = !editor->toPlainText().isEmpty();
     runAct->setEnabled(hasText);
+    parseAct->setEnabled(hasText);
 
     // If text is modified or empty, invalidate previous lexer results
     if (editor->document()->isModified() || !hasText) {
@@ -442,6 +446,20 @@ void MainWindow::disableLexerResultActions() {
     lastTokens.clear();
     lastSymbols.clear();
 }
+
+// --- Parser Actions ---
+//TODO: Implement this
+void MainWindow::runParser() {
+    std::cout << "hi";
+}
+
+// TODO: Make sure this is enabled and disabled correctly
+void MainWindow::showParserTree() {
+    const auto dialog = new ParserTreeDialog("../dot_example.dot", this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->show();
+}
+
 
 // --- UI Creation ---
 void MainWindow::createActions() {
@@ -525,6 +543,17 @@ void MainWindow::createActions() {
     connect(viewTokenSequenceAct, &QAction::triggered, this, &MainWindow::showTokenSequence);
     viewTokenSequenceAct->setEnabled(false); // Start disabled
 
+    // Parser Action
+    parseAct = new QAction(tr("&Run Parser"), this);
+    parseAct->setStatusTip(tr("Run syntax parsing on the current code"));
+    connect(parseAct, &QAction::triggered, this, &MainWindow::runParser);
+    parseAct->setEnabled(false); // Start disabled
+
+    viewParserTreeAct = new QAction(tr("Show &Parser Tree"), this);
+    viewParserTreeAct->setStatusTip(tr("View the parser tree from the last parser run"));
+    connect(viewParserTreeAct, &QAction::triggered, this, &MainWindow::showParserTree);
+    // viewParserTreeAct->setEnabled(false); // Start disabled
+
     // Help Actions
     aboutAct = new QAction(tr("&About"), this);
     aboutAct->setStatusTip(tr("Show the application's About box"));
@@ -572,6 +601,12 @@ void MainWindow::createMenus() {
     lexerMenu->addSeparator();
     lexerMenu->addAction(viewSymbolTableAct);
     lexerMenu->addAction(viewTokenSequenceAct);
+
+    // TODO: Create parser actions
+    parserMenu = menuBar()->addMenu(tr("&Parser"));
+    parserMenu->addAction(parseAct);
+    parserMenu->addSeparator();
+    parserMenu->addAction(viewParserTreeAct);
 
     helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAct);
