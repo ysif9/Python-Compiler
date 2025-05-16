@@ -6,6 +6,7 @@
 
 #include <iostream> // For potential error reporting
 #include <sstream>  // For std::ostringstream
+#include <filesystem>
 
 DOTGenerator::DOTGenerator() : nodeIdCounter(0), currentNodeParentId("") {}
 

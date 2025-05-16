@@ -76,7 +76,7 @@ int main() {
     // *before* parser.parse() and *after* the lexer has run.
     // But since Parser's constructor runs the lexer, it's simpler to check Parser's error list.
 
-    unique_ptr<ProgramNode> astRoot = parser.parse(); // This is the main parsing call
+    shared_ptr<ProgramNode> astRoot = parser.parse(); // This is the main parsing call
 
     // --- Print Parser and Lexer Errors (collected in parser.getErrors()) ---
     // Accessing public member `getErrors()` directly as per your Parser.cpp
