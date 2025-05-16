@@ -16,4 +16,6 @@ add_executable(Python_Compiler main.cpp
         include/Statements.hpp
         include/Helpers.hpp
         Parser/Parser.cpp
-        include/Parser.hpp)
+        include/Parser.hpp
+        include/DOTGenerator.hpp
+        Lexer/DOTGenerator.cpp)
