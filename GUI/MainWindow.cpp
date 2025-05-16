@@ -1,18 +1,16 @@
 // mainwindow.cpp
-#include "mainwindow.hpp"
-#include "codeeditor.hpp"
-#include "pythonhighlighter.hpp"
-#include "findreplacedialog.hpp"
+#include "MainWindow.hpp"
+#include "CodeEditor.hpp"
+#include "PythonHighlighter.hpp"
+#include "FindReplaceDialog.hpp"
 #include "Token.hpp"
 #include "Lexer.hpp"
-#include "symboltabledialog.hpp"
-#include "tokensequencedialog.hpp"
+#include "SymbolTableDialog.hpp"
+#include "TokenSequenceDialog.hpp"
 
 
 #include <QAction>
-#include <QMenu>
 #include <QMenuBar>
-#include <QToolBar>
 #include <QStatusBar>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -31,14 +29,37 @@ using namespace std;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
-    // textEdit member removed
-    isUntitled(true),
-    findDialog(nullptr),
-    // Initialize new action pointers
-    runAct(nullptr),
-    viewSymbolTableAct(nullptr),
-    viewTokenSequenceAct(nullptr)
-{
+      // textEdit member removed
+      findDialog(nullptr),
+      isUntitled(true),
+      // Initialize menu pointers
+      fileMenu(nullptr),
+      editMenu(nullptr),
+      searchMenu(nullptr),
+      lexerMenu(nullptr),
+      helpMenu(nullptr),
+      // Initialize file action pointers
+      newAct(nullptr),
+      openAct(nullptr),
+      saveAct(nullptr),
+      saveAsAct(nullptr),
+      exitAct(nullptr),
+      // Initialize edit action pointers
+      undoAct(nullptr),
+      redoAct(nullptr),
+      cutAct(nullptr),
+      copyAct(nullptr),
+      pasteAct(nullptr),
+      // Initialize search action pointers
+      findAct(nullptr),
+      replaceAct(nullptr),
+      // Initialize help action pointers
+      runAct(nullptr),
+      viewSymbolTableAct(nullptr),
+      // Initialize other action pointers (already present)
+      viewTokenSequenceAct(nullptr),
+      aboutAct(nullptr),
+      aboutQtAct(nullptr) {
     editor = new CodeEditor(this);
     setCentralWidget(editor);
 
@@ -68,18 +89,14 @@ MainWindow::MainWindow(QWidget *parent)
     setCurrentFile(QString()); // Initialize window title etc.
     setUnifiedTitleAndToolBarOnMac(true);
 
-    updateUndoRedoActions();   // Set initial undo/redo state
+    updateUndoRedoActions(); // Set initial undo/redo state
     updateLexerActionsState(); // Set initial lexer action state
     disableLexerResultActions(); // Ensure result actions start disabled
 }
 
-MainWindow::~MainWindow()
-{
-    // No explicit delete needed for findDialog if parented correctly
-}
+MainWindow::~MainWindow() = default;
 
-void MainWindow::closeEvent(QCloseEvent *event)
-{
+void MainWindow::closeEvent(QCloseEvent *event) {
     if (maybeSave()) {
         writeSettings(); // Save window state
         event->accept();
@@ -89,8 +106,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 }
 
 // --- File Actions ---
-void MainWindow::newFile()
-{
+void MainWindow::newFile() {
     if (maybeSave()) {
         isUntitled = true;
         editor->clear();
@@ -98,33 +114,29 @@ void MainWindow::newFile()
         editor->document()->setModified(false);
         setWindowModified(false);
         updateUndoRedoActions();
-        updateLexerActionsState();   // Update run button state (will be disabled)
+        updateLexerActionsState(); // Update run button state (will be disabled)
         disableLexerResultActions(); // Disable result actions for new file
     }
 }
 
-void MainWindow::open()
-{
+void MainWindow::open() {
     if (maybeSave()) {
-        QString fileName = QFileDialog::getOpenFileName(this,
-                                                        tr("Open Python File"), "",
-                                                        tr("Python Files (*.py *.pyw);;All Files (*)"));
+        const QString fileName = QFileDialog::getOpenFileName(this,
+                                                              tr("Open Python File"), "",
+                                                              tr("Python Files (*.py *.pyw);;All Files (*)"));
         if (!fileName.isEmpty())
             loadFile(fileName);
     }
 }
 
-bool MainWindow::save()
-{
+bool MainWindow::save() {
     if (isUntitled || currentFile.isEmpty()) {
         return saveAs();
-    } else {
-        return saveFile(currentFile);
     }
+    return saveFile(currentFile);
 }
 
-bool MainWindow::saveAs()
-{
+bool MainWindow::saveAs() {
     QString selectedFilterStr;
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     tr("Save Python File"),
@@ -144,15 +156,14 @@ bool MainWindow::saveAs()
 }
 
 // --- Edit Actions ---
-void MainWindow::undo() { editor->undo(); }
-void MainWindow::redo() { editor->redo(); }
-void MainWindow::cut() { editor->cut(); }
-void MainWindow::copy() { editor->copy(); }
-void MainWindow::paste() { editor->paste(); }
+void MainWindow::undo() const { editor->undo(); }
+void MainWindow::redo() const { editor->redo(); }
+void MainWindow::cut() const { editor->cut(); }
+void MainWindow::copy() const { editor->copy(); }
+void MainWindow::paste() const { editor->paste(); }
 
 // --- Search/Replace Actions ---
-void MainWindow::find()
-{
+void MainWindow::find() {
     if (!findDialog) {
         findDialog = new FindReplaceDialog(this);
         connect(findDialog, &FindReplaceDialog::findNext, this, &MainWindow::findNext);
@@ -165,23 +176,24 @@ void MainWindow::find()
     findDialog->activateWindow();
 }
 
-void MainWindow::replace()
-{
+void MainWindow::replace() {
     find();
 }
 
-void MainWindow::findNext(const QString &str, QTextDocument::FindFlags flags)
-{
+void MainWindow::findNext(const QString &str, const QTextDocument::FindFlags flags) {
     if (str.isEmpty()) return;
 
     if (!editor->find(str, flags)) {
         QTextCursor cursor = editor->textCursor();
-        bool searchingBackward = flags.testFlag(QTextDocument::FindBackward);
-        QMessageBox::StandardButton wrapReply;
-        wrapReply = QMessageBox::question(this, tr("Wrap Search"),
-                                          tr("Search string '%1' not found.\nWrap search from %2?")
-                                              .arg(str).arg(searchingBackward ? tr("end") : tr("beginning")),
-                                          QMessageBox::Yes|QMessageBox::No);
+        const bool searchingBackward = flags.testFlag(QTextDocument::FindBackward);
+        const QMessageBox::StandardButton wrapReply = QMessageBox::question(this, tr("Wrap Search"),
+                                                                            tr(
+                                                                                "Search string '%1' not found.\nWrap search from %2?")
+                                                                            .arg(str).arg(
+                                                                                searchingBackward
+                                                                                    ? tr("end")
+                                                                                    : tr("beginning")),
+                                                                            QMessageBox::Yes | QMessageBox::No);
         if (wrapReply == QMessageBox::Yes) {
             if (searchingBackward)
                 cursor.movePosition(QTextCursor::End);
@@ -195,13 +207,12 @@ void MainWindow::findNext(const QString &str, QTextDocument::FindFlags flags)
     }
 }
 
-void MainWindow::findPrevious(const QString &str, QTextDocument::FindFlags flags)
-{
+void MainWindow::findPrevious(const QString &str, const QTextDocument::FindFlags flags) {
     findNext(str, flags | QTextDocument::FindBackward);
 }
 
-void MainWindow::replaceNext(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags, bool replaceAllMode)
-{
+void MainWindow::replaceNext(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags,
+                             const bool replaceAllMode) {
     if (findStr.isEmpty()) return;
 
     QTextCursor cursor = editor->textCursor();
@@ -209,9 +220,9 @@ void MainWindow::replaceNext(const QString &findStr, const QString &replaceStr, 
 
     bool selectionMatches = false;
     if (cursor.hasSelection()) {
-        selectionMatches = (flags & QTextDocument::FindCaseSensitively) ?
-                               cursor.selectedText().compare(findStr, Qt::CaseSensitive) == 0 :
-                               cursor.selectedText().compare(findStr, Qt::CaseInsensitive) == 0;
+        selectionMatches = (flags & QTextDocument::FindCaseSensitively)
+                               ? cursor.selectedText().compare(findStr, Qt::CaseSensitive) == 0
+                               : cursor.selectedText().compare(findStr, Qt::CaseInsensitive) == 0;
     }
 
     if (selectionMatches) {
@@ -223,33 +234,32 @@ void MainWindow::replaceNext(const QString &findStr, const QString &replaceStr, 
             found = true;
         } else {
             if (!replaceAllMode) {
-                QMessageBox::information(this, tr("Not Found"), tr("The search string '%1' was not found.").arg(findStr));
+                QMessageBox::information(this, tr("Not Found"),
+                                         tr("The search string '%1' was not found.").arg(findStr));
             }
             return;
         }
     }
 
-    if(found && !replaceAllMode) {
+    if (found && !replaceAllMode) {
         findNext(findStr, flags);
     }
 }
 
 
-void MainWindow::replaceAll(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags)
-{
+void MainWindow::replaceAll(const QString &findStr, const QString &replaceStr, const QTextDocument::FindFlags flags) {
     if (findStr.isEmpty()) return;
 
     int count = 0;
-    QTextCursor originalCursor = editor->textCursor();
+    const QTextCursor originalCursor = editor->textCursor();
     editor->moveCursor(QTextCursor::Start);
 
-    QTextDocument::FindFlags searchFlags = flags & ~QTextDocument::FindBackward;
+    const QTextDocument::FindFlags searchFlags = flags & ~QTextDocument::FindBackward;
 
     editor->document()->blockSignals(true);
 
     while (editor->find(findStr, searchFlags)) {
-        QTextCursor cursor = editor->textCursor();
-        if(cursor.hasSelection()){
+        if (QTextCursor cursor = editor->textCursor(); cursor.hasSelection()) {
             cursor.insertText(replaceStr);
             count++;
         } else {
@@ -272,9 +282,8 @@ void MainWindow::replaceAll(const QString &findStr, const QString &replaceStr, Q
 
 // --- Lexer Actions ---
 
-void MainWindow::runLexer()
-{
-    QString currentCode = editor->toPlainText();
+void MainWindow::runLexer() {
+    const QString currentCode = editor->toPlainText();
     if (currentCode.isEmpty()) {
         statusBar()->showMessage(tr("Nothing to analyze."), 3000);
         disableLexerResultActions();
@@ -290,7 +299,7 @@ void MainWindow::runLexer()
     std::vector<Lexer_error> lexerErrors; // Store errors here
 
     try {
-        string codeStdString = currentCode.toStdString();
+        const string codeStdString = currentCode.toStdString();
         Lexer lexer(codeStdString); // Create the lexer
 
         // --- Phase 1: Tokenization ---
@@ -329,25 +338,26 @@ void MainWindow::runLexer()
             viewSymbolTableAct->setEnabled(!lastSymbols.empty());
             viewTokenSequenceAct->setEnabled(!lastTokens.empty());
 
-            int symbolCount = static_cast<int>(lastSymbols.size());
-            statusBar()->showMessage(tr("Lexer finished successfully. %n token(s), %1 symbol(s) found.", "", lastTokens.size()).arg(symbolCount), 5000);
+            const int symbolCount = static_cast<int>(lastSymbols.size());
+            statusBar()->showMessage(
+                tr("Lexer finished successfully. %n token(s), %1 symbol(s) found.", "", lastTokens.size()).
+                arg(symbolCount), 5000);
         } else {
             // Keep view actions disabled (already handled by disableLexerResultActions)
             statusBar()->showMessage(tr("Lexer finished with %n error(s).", "", lexerErrors.size()), 5000);
         }
-
-
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         lexerSuccess = false;
         QGuiApplication::restoreOverrideCursor(); // Restore cursor before showing message box
-        QMessageBox::critical(this, tr("Lexer Runtime Error"), tr("A runtime error occurred during lexical analysis:\n%1").arg(e.what()));
+        QMessageBox::critical(this, tr("Lexer Runtime Error"),
+                              tr("A runtime error occurred during lexical analysis:\n%1").arg(e.what()));
         statusBar()->showMessage(tr("Lexer failed."), 3000);
         // disableLexerResultActions(); // Already called at the start
-
     } catch (...) {
         lexerSuccess = false;
         QGuiApplication::restoreOverrideCursor(); // Restore cursor before showing message box
-        QMessageBox::critical(this, tr("Lexer Runtime Error"), tr("An unknown runtime error occurred during lexical analysis."));
+        QMessageBox::critical(this, tr("Lexer Runtime Error"),
+                              tr("An unknown runtime error occurred during lexical analysis."));
         statusBar()->showMessage(tr("Lexer failed."), 3000);
         // disableLexerResultActions(); // Already called at the start
     }
@@ -367,61 +377,54 @@ void MainWindow::runLexer()
     // Ensure view actions are appropriately enabled/disabled based on final state
     viewSymbolTableAct->setEnabled(lexerSuccess && !lastSymbols.empty());
     viewTokenSequenceAct->setEnabled(lexerSuccess && !lastTokens.empty());
-
 }
 
-void MainWindow::showSymbolTable()
-{
+void MainWindow::showSymbolTable() {
     // Action should be disabled if no symbols, but double-check
     if (!viewSymbolTableAct->isEnabled() || lastSymbols.empty()) {
         QMessageBox::information(this, tr("Symbol Table"), tr("No symbols found or lexer not run successfully yet."));
         return;
     }
 
-    SymbolTableDialog *dialog = new SymbolTableDialog(this);
+    const auto dialog = new SymbolTableDialog(this);
     dialog->setSymbolData(lastSymbols);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->show();
 }
 
-void MainWindow::showTokenSequence()
-{
+void MainWindow::showTokenSequence() {
     // Action should be disabled if no tokens, but double-check
     if (!viewTokenSequenceAct->isEnabled() || lastTokens.empty()) {
         QMessageBox::information(this, tr("Token Sequence"), tr("No tokens found or lexer not run successfully yet."));
         return;
     }
 
-    TokenSequenceDialog *dialog = new TokenSequenceDialog(lastTokens, this);
+    const auto dialog = new TokenSequenceDialog(lastTokens, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->show();
 }
 
 // --- Other Slots & Helpers ---
-void MainWindow::documentWasModified()
-{
+void MainWindow::documentWasModified() {
     setWindowModified(editor->document()->isModified());
     updateUndoRedoActions();
     // Lexer state update handled by direct connection now
 }
 
-void MainWindow::updateStatusBar()
-{
-    QTextCursor cursor = editor->textCursor();
-    int line = cursor.blockNumber() + 1;
-    int col = cursor.positionInBlock() + 1;
+void MainWindow::updateStatusBar() const {
+    const QTextCursor cursor = editor->textCursor();
+    const int line = cursor.blockNumber() + 1;
+    const int col = cursor.positionInBlock() + 1;
     statusBar()->showMessage(tr("Line: %1, Col: %2").arg(line).arg(col));
 }
 
-void MainWindow::updateUndoRedoActions()
-{
+void MainWindow::updateUndoRedoActions() const {
     undoAct->setEnabled(editor->document()->isUndoAvailable());
     redoAct->setEnabled(editor->document()->isRedoAvailable());
 }
 
-void MainWindow::updateLexerActionsState()
-{
-    bool hasText = !editor->toPlainText().isEmpty();
+void MainWindow::updateLexerActionsState() {
+    const bool hasText = !editor->toPlainText().isEmpty();
     runAct->setEnabled(hasText);
 
     // If text is modified or empty, invalidate previous lexer results
@@ -431,8 +434,7 @@ void MainWindow::updateLexerActionsState()
     // View actions are only enabled inside runLexer() on success.
 }
 
-void MainWindow::disableLexerResultActions()
-{
+void MainWindow::disableLexerResultActions() {
     // Check if actions exist before disabling
     if (viewSymbolTableAct) viewSymbolTableAct->setEnabled(false);
     if (viewTokenSequenceAct) viewTokenSequenceAct->setEnabled(false);
@@ -442,8 +444,7 @@ void MainWindow::disableLexerResultActions()
 }
 
 // --- UI Creation ---
-void MainWindow::createActions()
-{
+void MainWindow::createActions() {
     // File Actions
     newAct = new QAction(tr("&New"), this);
     newAct->setShortcuts(QKeySequence::New);
@@ -545,8 +546,7 @@ void MainWindow::createActions()
     redoAct->setEnabled(false);
 }
 
-void MainWindow::createMenus()
-{
+void MainWindow::createMenus() {
     fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(newAct);
     fileMenu->addAction(openAct);
@@ -578,17 +578,14 @@ void MainWindow::createMenus()
     helpMenu->addAction(aboutQtAct);
 }
 
-void MainWindow::createStatusBar()
-{
+void MainWindow::createStatusBar() const {
     statusBar()->showMessage(tr("Ready"));
 }
 
 // --- Settings & File Handling ---
-void MainWindow::readSettings()
-{
-    QSettings settings;
-    const QByteArray geometry = settings.value("geometry", QByteArray()).toByteArray();
-    if (geometry.isEmpty()) {
+void MainWindow::readSettings() {
+    const QSettings settings;
+    if (const QByteArray geometry = settings.value("geometry", QByteArray()).toByteArray(); geometry.isEmpty()) {
         const QRect availableGeometry = screen()->availableGeometry();
         resize(availableGeometry.width() / 2, availableGeometry.height() * 2 / 3);
         move((availableGeometry.width() - width()) / 2,
@@ -598,41 +595,38 @@ void MainWindow::readSettings()
     }
 }
 
-void MainWindow::writeSettings()
-{
+void MainWindow::writeSettings() const {
     QSettings settings;
     settings.setValue("geometry", saveGeometry());
 }
 
-bool MainWindow::maybeSave()
-{
+bool MainWindow::maybeSave() {
     if (!editor->document()->isModified())
         return true;
     const QMessageBox::StandardButton ret
-        = QMessageBox::warning(this, tr("GOGI"),
-                               tr("The document has been modified.\n"
-                                  "Do you want to save your changes?"),
-                               QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+            = QMessageBox::warning(this, tr("GOGI"),
+                                   tr("The document has been modified.\n"
+                                       "Do you want to save your changes?"),
+                                   QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
     switch (ret) {
-    case QMessageBox::Save:
-        return save();
-    case QMessageBox::Cancel:
-        return false;
-    case QMessageBox::Discard:
-        return true;
-    default:
-        break;
+        case QMessageBox::Save:
+            return save();
+        case QMessageBox::Cancel:
+            return false;
+        case QMessageBox::Discard:
+            return true;
+        default:
+            break;
     }
     return true; // Should be unreachable
 }
 
-void MainWindow::loadFile(const QString &fileName)
-{
+void MainWindow::loadFile(const QString &fileName) {
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         QMessageBox::warning(this, tr("GOGI"),
                              tr("Cannot read file %1:\n%2.")
-                                 .arg(QDir::toNativeSeparators(fileName), file.errorString()));
+                             .arg(QDir::toNativeSeparators(fileName), file.errorString()));
         return;
     }
 
@@ -655,12 +649,11 @@ void MainWindow::loadFile(const QString &fileName)
     setWindowModified(false);
     editor->moveCursor(QTextCursor::Start);
     updateUndoRedoActions();
-    updateLexerActionsState();   // Update run button state
+    updateLexerActionsState(); // Update run button state
     disableLexerResultActions(); // Disable results after loading new file
 }
 
-bool MainWindow::saveFile(const QString &fileName)
-{
+bool MainWindow::saveFile(const QString &fileName) {
     QString errorMessage;
 
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
@@ -671,11 +664,11 @@ bool MainWindow::saveFile(const QString &fileName)
         out << editor->toPlainText();
         if (!file.commit()) {
             errorMessage = tr("Cannot write file %1:\n%2.")
-            .arg(QDir::toNativeSeparators(fileName), file.errorString());
+                    .arg(QDir::toNativeSeparators(fileName), file.errorString());
         }
     } else {
         errorMessage = tr("Cannot open file %1 for writing:\n%2.")
-        .arg(QDir::toNativeSeparators(fileName), file.errorString());
+                .arg(QDir::toNativeSeparators(fileName), file.errorString());
     }
     QGuiApplication::restoreOverrideCursor();
 
@@ -693,8 +686,7 @@ bool MainWindow::saveFile(const QString &fileName)
     return true;
 }
 
-void MainWindow::setCurrentFile(const QString &fileName)
-{
+void MainWindow::setCurrentFile(const QString &fileName) {
     currentFile = fileName;
     QString shownName = tr("Untitled");
     if (!currentFile.isEmpty()) {
@@ -707,7 +699,6 @@ void MainWindow::setCurrentFile(const QString &fileName)
     setWindowModified(editor->document()->isModified());
 }
 
-QString MainWindow::strippedName(const QString &fullFileName)
-{
+QString MainWindow::strippedName(const QString &fullFileName) {
     return QFileInfo(fullFileName).fileName();
 }

@@ -1,4 +1,4 @@
-#include "symboltabledialog.hpp"
+#include "SymbolTableDialog.hpp"
 
 #include <QTableWidget>
 #include <QPushButton>
@@ -18,12 +18,13 @@
 #include <utility>     // For std::pair
 
 // --- Helper for numeric sorting on the Index column ---
-class NumericTableWidgetItem : public QTableWidgetItem {
+class NumericTableWidgetItem final : public QTableWidgetItem {
 public:
     using QTableWidgetItem::QTableWidgetItem; // Inherit constructors
     bool operator<(const QTableWidgetItem &other) const override {
         bool ok1, ok2;
-        int i1 = text().toInt(&ok1), i2 = other.text().toInt(&ok2);
+        const int i1 = text().toInt(&ok1);
+        const int i2 = other.text().toInt(&ok2);
         if (ok1 && ok2) return i1 < i2; // Numeric comparison if possible
         return QTableWidgetItem::operator<(other); // Fallback to string comparison
     }
@@ -119,8 +120,7 @@ void SymbolTableDialog::applyStyling()
 }
 
 // Updated method to populate table from the symbol map <identifier, type>
-void SymbolTableDialog::setSymbolData(const std::unordered_map<std::string, std::string>& symbols)
-{
+void SymbolTableDialog::setSymbolData(const std::unordered_map<std::string, std::string>& symbols) const {
     tableWidget->setRowCount(0); // Clear previous data
     tableWidget->setSortingEnabled(false); // Disable sorting during population
 
@@ -148,7 +148,7 @@ void SymbolTableDialog::setSymbolData(const std::unordered_map<std::string, std:
         tableWidget->setItem(r, 1, identifierItem);
 
         // Data Type column
-        QTableWidgetItem *dataTypeItem = new QTableWidgetItem(QString::fromStdString(dataType));
+        const auto dataTypeItem = new QTableWidgetItem(QString::fromStdString(dataType));
         dataTypeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         // Optional: Change color based on type? e.g., unknown in red
         // if (dataType == "unknown" || dataType == "Any" || dataType == "complex_hint") {
@@ -165,20 +165,18 @@ void SymbolTableDialog::setSymbolData(const std::unordered_map<std::string, std:
 
 void SymbolTableDialog::showContextMenu(const QPoint &pos)
 {
-    QModelIndex idx = tableWidget->indexAt(pos);
-    if (!idx.isValid()) return;
+    if (const QModelIndex idx = tableWidget->indexAt(pos); !idx.isValid()) return;
 
     QMenu menu(this);
-    QAction *copyAct = menu.addAction(tr("Copy Cell Content"));
+    const QAction *copyAct = menu.addAction(tr("Copy Cell Content"));
     connect(copyAct, &QAction::triggered, this, &SymbolTableDialog::copyCell);
     menu.exec(tableWidget->viewport()->mapToGlobal(pos));
 }
 
-void SymbolTableDialog::copyCell()
-{
-    QModelIndex idx = tableWidget->currentIndex(); // Use current index
+void SymbolTableDialog::copyCell() const {
+    const QModelIndex idx = tableWidget->currentIndex(); // Use current index
     if (!idx.isValid()) return;
-    QString txt = tableWidget->model()->data(idx, Qt::DisplayRole).toString(); // Get display data
+    const QString txt = tableWidget->model()->data(idx, Qt::DisplayRole).toString(); // Get display data
     QClipboard *cb = QGuiApplication::clipboard();
     cb->setText(txt);
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(Python_Compiler_GUI LANGUAGES CXX)
+project(Python_Compiler LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,6 +34,7 @@ set(SOURCES
 
         # Compiler backend
         Lexer/Lexer.cpp
+        GUI/ThemeUtility.cpp
 )
 
 # Header files (for Qt's MOC)
@@ -49,18 +50,19 @@ set(HEADERS
 
         include/Lexer.hpp
         include/Token.hpp
+        GUI/include/ThemeUtility.hpp
 )
 
-add_executable(Python_Compiler_GUI ${SOURCES} ${HEADERS})
+add_executable(Python_Compiler ${SOURCES} ${HEADERS})
 
-target_link_libraries(Python_Compiler_GUI PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(Python_Compiler PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 
 # Optional macOS/iOS settings
-set_target_properties(Python_Compiler_GUI PROPERTIES
+set_target_properties(Python_Compiler PROPERTIES
         MACOSX_BUNDLE TRUE
         WIN32_EXECUTABLE TRUE
 )
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(Python_Compiler_GUI)
-endif()
+if (QT_VERSION_MAJOR EQUAL 6)
+    qt_finalize_executable(Python_Compiler)
+endif ()

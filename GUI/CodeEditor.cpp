@@ -1,5 +1,5 @@
-#include "include/codeeditor.hpp"
-#include "linenumberarea.hpp"
+#include "include/CodeEditor.hpp"
+#include "LineNumberArea.hpp"
 #include <QPainter>
 #include <QTextBlock>
 #include <QRegularExpression>
@@ -31,7 +31,7 @@ CodeEditor::CodeEditor(QWidget *parent) : QPlainTextEdit(parent) {
     // setLineWrapMode(QPlainTextEdit::NoWrap);
 }
 
-int CodeEditor::lineNumberAreaWidth() {
+int CodeEditor::lineNumberAreaWidth() const {
     int digits = 1;
     int max = qMax(1, blockCount());
     while (max >= 10) {
@@ -40,7 +40,7 @@ int CodeEditor::lineNumberAreaWidth() {
     }
 
     // Add some padding
-    int space = 10 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
+    const int space = 10 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
     return space;
 }
 
@@ -48,7 +48,7 @@ void CodeEditor::updateLineNumberAreaWidth(int /* newBlockCount */) {
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
 
-void CodeEditor::updateLineNumberArea(const QRect &rect, int dy) {
+void CodeEditor::updateLineNumberArea(const QRect &rect, const int dy) {
     if (dy) {
         lineNumberArea->scroll(0, dy);
     } else {
@@ -59,10 +59,10 @@ void CodeEditor::updateLineNumberArea(const QRect &rect, int dy) {
         updateLineNumberAreaWidth(0);
 }
 
-void CodeEditor::resizeEvent(QResizeEvent *e) {
-    QPlainTextEdit::resizeEvent(e);
+void CodeEditor::resizeEvent(QResizeEvent *event) {
+    QPlainTextEdit::resizeEvent(event);
 
-    QRect cr = contentsRect();
+    const QRect cr = contentsRect();
     lineNumberArea->setGeometry(QRect(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height()));
 }
 
@@ -73,7 +73,7 @@ void CodeEditor::highlightCurrentLine() {
         QTextEdit::ExtraSelection selection;
 
 
-         QColor lineColor = QColor(50, 50, 60);
+        constexpr auto lineColor = QColor(50, 50, 60);
 
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
@@ -85,7 +85,7 @@ void CodeEditor::highlightCurrentLine() {
     setExtraSelections(extraSelections);
 }
 
-void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *event) {
+void CodeEditor::lineNumberAreaPaintEvent(const QPaintEvent *event) const {
     QPainter painter(lineNumberArea);
     painter.fillRect(event->rect(), QColor(35, 35, 35)); // Line number background color
 
@@ -96,7 +96,7 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *event) {
 
     // Colors for line numbers
     QColor currentLineNumberColor = QColor(200, 200, 200); // Brighter for current line
-    QColor otherLineNumberColor = QColor(120, 120, 120);   // Dimmer for other lines
+    QColor otherLineNumberColor = QColor(120, 120, 120); // Dimmer for other lines
     int currentBlockNumber = textCursor().blockNumber();
 
     while (block.isValid() && top <= event->rect().bottom()) {
@@ -116,16 +116,15 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *event) {
 
 void CodeEditor::keyPressEvent(QKeyEvent *e) {
     if (e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter) {
-        QTextCursor cursor = textCursor();
-        QTextBlock currentBlock = cursor.block();
+        const QTextCursor cursor = textCursor();
+        const QTextBlock currentBlock = cursor.block();
         QString indent = "";
 
         // Get previous block's indentation
         if (currentBlock.isValid()) {
-            QString prevText = currentBlock.text();
-            QRegularExpression re("^\\s*"); // Match leading whitespace
-            QRegularExpressionMatch match = re.match(prevText);
-            if (match.hasMatch()) {
+            const QString prevText = currentBlock.text();
+            const QRegularExpression re("^\\s*"); // Match leading whitespace
+            if (const QRegularExpressionMatch match = re.match(prevText); match.hasMatch()) {
                 indent = match.captured(0);
             }
 
@@ -143,8 +142,7 @@ void CodeEditor::keyPressEvent(QKeyEvent *e) {
     } else if (e->key() == Qt::Key_Tab && e->modifiers() == Qt::NoModifier) {
         // Handle Tab key for indentation/completion (basic example)
         // In a real IDE, this would check context for auto-completion triggers
-        QTextCursor cursor = textCursor();
-        if (cursor.hasSelection()) {
+        if (const QTextCursor cursor = textCursor(); cursor.hasSelection()) {
             // Indent selected block (implementation omitted for brevity,
             // would involve iterating selected blocks and adding spaces/tabs)
             // QPlainTextEdit::keyPressEvent(e); // Or custom logic
@@ -153,13 +151,12 @@ void CodeEditor::keyPressEvent(QKeyEvent *e) {
             // Insert tab spaces
             textCursor().insertText(QString(tabStopDistance() / fontMetrics().horizontalAdvance(' '), ' '));
         }
-
-    } else if (e->key() == Qt::Key_Backtab) { // Shift+Tab for un-indent
+    } else if (e->key() == Qt::Key_Backtab) {
+        // Shift+Tab for un-indent
         // Handle Shift+Tab for un-indentation (implementation omitted for brevity)
         // Would involve removing spaces/tabs from the start of the line/selection
         QPlainTextEdit::keyPressEvent(e); // Fallback for now
-    }
-    else {
+    } else {
         // Let the base class handle other keys
         QPlainTextEdit::keyPressEvent(e);
     }

@@ -8,11 +8,11 @@
 
 class QTextDocument;
 
-class PythonHighlighter : public QSyntaxHighlighter {
+class PythonHighlighter final : public QSyntaxHighlighter {
     Q_OBJECT
 
 public:
-    PythonHighlighter(QTextDocument *parent = nullptr);
+    explicit PythonHighlighter(QTextDocument *parent = nullptr);
 
 protected:
     void highlightBlock(const QString &text) override;
@@ -22,6 +22,7 @@ private:
         QRegularExpression pattern;
         QTextCharFormat format;
     };
+
     QVector<HighlightingRule> highlightingRules;
 
     QRegularExpression commentStartExpression;
@@ -31,11 +32,11 @@ private:
     QTextCharFormat classFormat;
     QTextCharFormat singleLineCommentFormat;
     QTextCharFormat multiLineCommentFormat; // For triple quotes
-    QTextCharFormat quotationFormat;         // For single/double quotes
+    QTextCharFormat quotationFormat; // For single/double quotes
     QTextCharFormat functionFormat;
     QTextCharFormat numberFormat;
     QTextCharFormat decoratorFormat;
-    QTextCharFormat selfFormat;             // Highlight 'self'
+    QTextCharFormat selfFormat; // Highlight 'self'
 
     // Multi-line state tracking
     QTextCharFormat multiLineStringFormat;
@@ -45,4 +46,4 @@ private:
     QRegularExpression tripleDoubleQuoteEnd;
 };
 
-#endif // PYTHONHIGHLIGHTER_H
+#endif // PYTHONHIGHLIGHTER_HPP

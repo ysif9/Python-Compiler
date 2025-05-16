@@ -7,24 +7,26 @@
 
 class QTableWidget;
 
-class SymbolTableDialog : public QDialog
-{
+class SymbolTableDialog final : public QDialog {
     Q_OBJECT
 
 public:
     explicit SymbolTableDialog(QWidget *parent = nullptr);
+
     ~SymbolTableDialog() override; // Mark override
 
     // Method to set the data from the lexer's processed symbol table
     // Accepts a map of <identifier, type_string>
-    void setSymbolData(const std::unordered_map<std::string, std::string>& symbols);
+    void setSymbolData(const std::unordered_map<std::string, std::string> &symbols) const;
 
 private slots:
     void showContextMenu(const QPoint &pos);
-    void copyCell();
+
+    void copyCell() const;
 
 private:
     void setupUi();
+
     void applyStyling();
 
     QTableWidget *tableWidget;

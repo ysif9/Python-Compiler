@@ -1,4 +1,4 @@
-#include "errordialog.hpp"
+#include "ErrorDialog.hpp"
 
 #include <QVBoxLayout>
 #include <QPlainTextEdit>
@@ -7,9 +7,8 @@
 #include <QTextCursor> // Include for QTextCursor
 
 // Constructor implementation
-ErrorDialog::ErrorDialog(const std::vector<Lexer_error>& errors, QWidget *parent)
-    : QDialog(parent)
-{
+ErrorDialog::ErrorDialog(const std::vector<Lexer_error> &errors, QWidget *parent)
+    : QDialog(parent) {
     setWindowTitle(tr("Lexer Errors"));
     setMinimumSize(500, 300); // Set a reasonable minimum size
 
@@ -25,9 +24,10 @@ ErrorDialog::ErrorDialog(const std::vector<Lexer_error>& errors, QWidget *parent
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     // Create the main layout
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    // TODO: Apparently leaked memory here
+    auto *mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(errorDisplay); // Add text area
-    mainLayout->addWidget(buttonBox);    // Add button box
+    mainLayout->addWidget(buttonBox); // Add button box
 
     // Set the layout for the dialog
     setLayout(mainLayout);
@@ -37,8 +37,7 @@ ErrorDialog::ErrorDialog(const std::vector<Lexer_error>& errors, QWidget *parent
 }
 
 // Implementation of the displayErrors helper function
-void ErrorDialog::displayErrors(const std::vector<Lexer_error>& errors)
-{
+void ErrorDialog::displayErrors(const std::vector<Lexer_error> &errors) const {
     errorDisplay->clear(); // Clear previous content
 
     if (errors.empty()) {
@@ -51,15 +50,15 @@ void ErrorDialog::displayErrors(const std::vector<Lexer_error>& errors)
     font.setStyleHint(QFont::TypeWriter);
     errorDisplay->setFont(font);
 
-    for (const auto& error : errors) {
+    for (const auto &[message, line, lexeme]: errors) {
         // Format the error message nicely
         QString errorLine = tr("Line %1: %2")
-                                .arg(error.line)
-                                .arg(QString::fromStdString(error.message));
+                .arg(line)
+                .arg(QString::fromStdString(message));
 
         // Include the problematic lexeme if it's not empty
-        if (!error.lexeme.empty()) {
-            errorLine += tr(" (near '%1')").arg(QString::fromStdString(error.lexeme));
+        if (!lexeme.empty()) {
+            errorLine += tr(" (near '%1')").arg(QString::fromStdString(lexeme));
         }
 
         errorDisplay->appendPlainText(errorLine);

@@ -5,15 +5,18 @@
 #include <QMainWindow>
 #include <QTextDocument> // For FindFlags
 #include <vector>        // For storing tokens
-#include <unordered_set> // For storing symbols
 #include <string>        // For storing symbols
-#include "errordialog.hpp"
+#include "ErrorDialog.hpp"
 
 
 struct Token;
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+
+namespace Ui {
+    class MainWindow;
+}
+
 class QAction;
 class QMenu;
 class QPlainTextEdit;
@@ -24,13 +27,13 @@ class SymbolTableDialog;
 class TokenSequenceDialog;
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
+class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+
+    ~MainWindow() override;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -38,47 +41,74 @@ protected:
 private slots:
     // File Actions
     void newFile();
+
     void open();
+
     bool save();
+
     bool saveAs();
 
     // Edit Actions
-    void undo();
-    void redo();
-    void cut();
-    void copy();
-    void paste();
+    void undo() const;
+
+    void redo() const;
+
+    void cut() const;
+
+    void copy() const;
+
+    void paste() const;
 
     // Search Actions
     void find();
+
     void findNext(const QString &str, QTextDocument::FindFlags flags);
+
     void findPrevious(const QString &str, QTextDocument::FindFlags flags);
+
     void replace(); // Slot to show the dialog
-    void replaceNext(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags, bool replaceAllMode = false);
+    void replaceNext(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags,
+                     bool replaceAllMode = false);
+
     void replaceAll(const QString &findStr, const QString &replaceStr, QTextDocument::FindFlags flags);
 
     // *** Lexer Actions ***
     void runLexer();
+
     void showSymbolTable();
+
     void showTokenSequence();
 
     // Other Slots
     void documentWasModified();
-    void updateStatusBar();
-    void updateUndoRedoActions();
+
+    void updateStatusBar() const;
+
+    void updateUndoRedoActions() const;
+
     void updateLexerActionsState();
 
 private:
     void createActions();
+
     void createMenus();
-    void createStatusBar();
+
+    void createStatusBar() const;
+
     void readSettings();
-    void writeSettings();
+
+    void writeSettings() const;
+
     bool maybeSave();
+
     void loadFile(const QString &fileName);
+
     bool saveFile(const QString &fileName);
+
     void setCurrentFile(const QString &fileName);
-    QString strippedName(const QString &fullFileName);
+
+    static QString strippedName(const QString &fullFileName);
+
     void disableLexerResultActions();
 
     CodeEditor *editor;
@@ -115,9 +145,9 @@ private:
     // *** Lexer Actions ***
     QAction *runAct;
     QAction *viewSymbolTableAct;
-    QAction *viewTokenSequenceAct;// Action for the token sequence view
+    QAction *viewTokenSequenceAct; // Action for the token sequence view
     // *** End Lexer Actions ***
     QAction *aboutAct;
     QAction *aboutQtAct;
 };
-#endif // MAINWINDOW_H
+#endif // MAINWINDOW_HPP

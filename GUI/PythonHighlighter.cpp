@@ -1,4 +1,4 @@
-#include "pythonhighlighter.hpp"
+#include "PythonHighlighter.hpp"
 #include <QColor>
 
 PythonHighlighter::PythonHighlighter(QTextDocument *parent)
@@ -133,7 +133,7 @@ void PythonHighlighter::highlightBlock(const QString &text) {
     while (startIndex >= 0) {
         QRegularExpression endExpression = (currentState == 1) ? tripleDoubleQuoteEnd : tripleSingleQuoteEnd;
         QRegularExpressionMatch endMatch = endExpression.match(text, startIndex);
-        int endIndex = endMatch.capturedStart();
+        const int endIndex = endMatch.capturedStart();
         int commentLength = 0;
 
         if (endIndex == -1) { // Multi-line string continues to next block
@@ -147,10 +147,9 @@ void PythonHighlighter::highlightBlock(const QString &text) {
         setFormat(startIndex, commentLength, multiLineStringFormat);
 
         // Find the next potential start after the current one ends
-        int nextDouble = text.indexOf(tripleDoubleQuoteStart, startIndex + commentLength);
-        int nextSingle = text.indexOf(tripleSingleQuoteStart, startIndex + commentLength);
+        const int nextDouble = text.indexOf(tripleDoubleQuoteStart, startIndex + commentLength);
 
-        if (nextDouble == -1 && nextSingle == -1) {
+        if (const int nextSingle = text.indexOf(tripleSingleQuoteStart, startIndex + commentLength); nextDouble == -1 && nextSingle == -1) {
             startIndex = -1; // No more starts in this block
         } else if (nextDouble != -1 && (nextSingle == -1 || nextDouble < nextSingle)) {
             startIndex = nextDouble;

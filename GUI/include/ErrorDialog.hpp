@@ -10,13 +10,13 @@ class QPlainTextEdit;
 class QDialogButtonBox;
 QT_END_NAMESPACE
 
-class ErrorDialog : public QDialog
-{
+class ErrorDialog final : public QDialog {
     Q_OBJECT
 
 public:
     // Constructor: Takes the list of errors and the parent widget
-    explicit ErrorDialog(const std::vector<Lexer_error>& errors, QWidget *parent = nullptr);
+    explicit ErrorDialog(const std::vector<Lexer_error> &errors, QWidget *parent = nullptr);
+
     ~ErrorDialog() override = default; // Use default destructor
 
 private:
@@ -25,7 +25,7 @@ private:
     QDialogButtonBox *buttonBox;
 
     // Helper function to format and display errors
-    void displayErrors(const std::vector<Lexer_error>& errors);
+    void displayErrors(const std::vector<Lexer_error> &errors) const;
 };
 
 #endif // ERRORDIALOG_HPP

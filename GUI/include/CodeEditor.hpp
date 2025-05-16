@@ -13,26 +13,30 @@ QT_END_NAMESPACE
 
 class LineNumberArea;
 
-class CodeEditor : public QPlainTextEdit {
+class CodeEditor final : public QPlainTextEdit {
     Q_OBJECT
 
 public:
-    CodeEditor(QWidget *parent = nullptr);
+    explicit CodeEditor(QWidget *parent = nullptr);
 
-    void lineNumberAreaPaintEvent(QPaintEvent *event);
-    int lineNumberAreaWidth();
+    void lineNumberAreaPaintEvent(const QPaintEvent *event) const;
+
+    int lineNumberAreaWidth() const;
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+
     void keyPressEvent(QKeyEvent *e) override; // For auto-indentation
 
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
+
     void highlightCurrentLine();
+
     void updateLineNumberArea(const QRect &rect, int dy);
 
 private:
     QWidget *lineNumberArea;
 };
 
-#endif // CODEEDITOR_H
+#endif // CODEEDITOR_HPP

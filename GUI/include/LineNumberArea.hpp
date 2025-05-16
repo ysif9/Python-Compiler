@@ -1,12 +1,12 @@
 #ifndef LINENUMBERAREA_HPP
 #define LINENUMBERAREA_HPP
 
-#include <QWidget>
-#include "codeeditor.hpp"
+#include "CodeEditor.hpp"
 
-class LineNumberArea : public QWidget {
+class LineNumberArea final : public QWidget {
 public:
-    LineNumberArea(CodeEditor *editor) : QWidget(editor), codeEditor(editor) {}
+    explicit LineNumberArea(CodeEditor *editor) : QWidget(editor), codeEditor(editor) {
+    }
 
     QSize sizeHint() const override {
         return QSize(codeEditor->lineNumberAreaWidth(), 0);
@@ -21,4 +21,4 @@ private:
     CodeEditor *codeEditor;
 };
 
-#endif // LINENUMBERAREA_H
+#endif // LINENUMBERAREA_HPP

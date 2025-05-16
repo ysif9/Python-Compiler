@@ -1,5 +1,4 @@
-#include "tokensequencedialog.hpp"
-#include <QTableWidget>
+#include "TokenSequenceDialog.hpp"
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QTableWidgetItem>
@@ -19,7 +18,7 @@ TokenSequenceDialog::TokenSequenceDialog(const std::vector<Token>& tokens, QWidg
     setWindowIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogListView)); // Use a relevant icon
 }
 
-QString TokenSequenceDialog::tokenCategoryToString(TokenCategory category) {
+QString TokenSequenceDialog::tokenCategoryToString(const TokenCategory category) {
     switch (category) {
     case TokenCategory::IDENTIFIER:   return QStringLiteral("Identifier");
     case TokenCategory::KEYWORD:      return QStringLiteral("Keyword");
@@ -101,30 +100,29 @@ void TokenSequenceDialog::setupUi()
     setStyleSheet(style);
 }
 
-void TokenSequenceDialog::populateTable(const std::vector<Token>& tokens)
-{
+void TokenSequenceDialog::populateTable(const std::vector<Token>& tokens) const {
     tableWidget->setRowCount(static_cast<int>(tokens.size()));
 
     for (int row = 0; row < tokens.size(); ++row) {
-        const Token& token = tokens[row];
+        const auto&[type, lexeme, line, category] = tokens[row];
 
         // Line Number
-        auto *lineItem = new QTableWidgetItem(QString::number(token.line));
+        auto *lineItem = new QTableWidgetItem(QString::number(line));
         lineItem->setTextAlignment(Qt::AlignCenter);
         tableWidget->setItem(row, 0, lineItem);
 
         // Type (as string)
-        auto *typeItem = new QTableWidgetItem(QString::fromStdString(tokenTypeToString(token.type)));
+        auto *typeItem = new QTableWidgetItem(QString::fromStdString(tokenTypeToString(type)));
         typeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         tableWidget->setItem(row, 1, typeItem);
 
         // Lexeme
-        auto *lexemeItem = new QTableWidgetItem(QString::fromStdString(token.lexeme));
+        auto *lexemeItem = new QTableWidgetItem(QString::fromStdString(lexeme));
         lexemeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         tableWidget->setItem(row, 2, lexemeItem);
 
         // Category (as string)
-        auto *categoryItem = new QTableWidgetItem(tokenCategoryToString(token.category));
+        auto *categoryItem = new QTableWidgetItem(tokenCategoryToString(category));
         categoryItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         tableWidget->setItem(row, 3, categoryItem);
     }

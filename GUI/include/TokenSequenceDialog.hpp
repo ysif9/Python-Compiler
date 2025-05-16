@@ -8,18 +8,20 @@
 
 class QTableWidget;
 
-class TokenSequenceDialog : public QDialog
-{
+class TokenSequenceDialog final : public QDialog {
     Q_OBJECT
 
 public:
-    explicit TokenSequenceDialog(const std::vector<Token>& tokens, QWidget *parent = nullptr);
+    explicit TokenSequenceDialog(const std::vector<Token> &tokens, QWidget *parent = nullptr);
+
     ~TokenSequenceDialog() override = default; // Use default destructor
 
 private:
     void setupUi();
-    void populateTable(const std::vector<Token>& tokens);
-    QString tokenCategoryToString(TokenCategory category);
+
+    void populateTable(const std::vector<Token> &tokens) const;
+
+    static QString tokenCategoryToString(TokenCategory category);
 
     QTableWidget *tableWidget;
 };
