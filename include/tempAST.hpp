@@ -7,9 +7,13 @@
 #include "Token.hpp"
 
 enum class NodeType {
-    Module, FunctionDef, Assign, Expr, BinOp, Name, Num, Str, If, While, For, Return,
-    Pass, Raise, Global, Nonlocal, Del, Assert, Break, Continue, Import, ImportFrom, ClassDef, Decorator, Stmt,AugAssign,Params
-,Param,Try,Except,Finally,Slice,List,Dict,Bytes,Tuple,Set,DictItem,Args,KwArg,IfExp,UnaryOp,Constant,Subscript,Attribute,Call
+    ProgramNode, StatementNode, ExpressionNode, PassStatementNode, AssignmentStatementNode, AugAssignNode, ExpressionStatementNode, ReturnStatementNode,
+    TupleLiteralNode, IdentifierNode, NamedImportNode, ImportStatementNode,
+    IfExpNode, BinaryOpNode, UnaryOpNode, ComparisonNode, AttributeAccessNode, KeywordArgNode, FunctionCallNode,
+    SubscriptionNode, BooleanLiteralNode, NoneLiteralNode, NumberLiteralNode, ComplexLiteralNode, StringLiteralNode,ListLiteralNode,BlockNode
+,FunctionDefinitionNode,ArgumentsNode,RaiseStatementNode,GlobalStatementNode,
+    NonlocalStatementNode,IfStatementNode,ClassDefinitionNode,ForStatementNode,TryStatementNode,ExceptionHandlerNode,
+    ParameterNode,WhileStatementNode,DictLiteralNode,SliceNode,BytesLiteralNode,SetLiteralNode,BreakStatementNode,ContinueStatementNode
 };
 
 class AstNode {
