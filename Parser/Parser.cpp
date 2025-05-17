@@ -1,4 +1,7 @@
 #include "Parser.hpp"
+
+#include <filesystem>
+
 #include "tempAST.hpp"
 #include <stdexcept>
 #include <vector>
@@ -2134,4 +2137,10 @@ void Parser::saveDotFile(const string& dotContent, const string& filename) {
 
     out << dotContent;
     out.close();
+    std::filesystem::path fullPath = std::filesystem::absolute(filename);
+    dotFilePath = fullPath.string(); // Return the full path as std::string
+}
+
+string Parser::getDotFilePath() const {
+    return dotFilePath;
 }

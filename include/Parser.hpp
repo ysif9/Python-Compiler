@@ -24,11 +24,15 @@ public:
     string generateDot(shared_ptr<AstNode> root);
 
     void saveDotFile(const string &dotContent, const string &filename);
+
+    string getDotFilePath() const;
+
     bool had_error;
 private:
     Lexer& lexer_ref;
     vector<Token> tokens;
     size_t current_pos;
+    string dotFilePath;
 
     vector<string> errors_list;
 
