@@ -1,5 +1,8 @@
-total = 0
-for i in range(1, 11):
-    total += i
-print(total)
-x = x + 1
+
+def main():
+    values = [1, 4, 7, 10, 13, 16, 19, 22]
+    print("Checking even and odd numbers:")
+    check_even_odd(values)
+
+if __name__ == "__main__":
+    main()
