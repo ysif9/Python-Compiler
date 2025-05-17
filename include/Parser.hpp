@@ -25,6 +25,7 @@ public:
 
     bool hasError() const { return had_error; }
     const std::vector<std::string>& getErrors() const { return errors_list; }
+    string getDotFilePath() const;
 
 private:
     Lexer& lexer_ref; // Reference to the lexer
@@ -135,8 +136,6 @@ private:
     void parseSimplifiedStarEtc(ArgumentsNode& args_node_ref);
 
     void saveDotFile(shared_ptr<ProgramNode> &root, const string &filename);
-
-    string getDotFilePath() const;
 
     void unputToken();
 

@@ -35,6 +35,7 @@ set(SOURCES
         # Compiler backend
         Lexer/Lexer.cpp
         Parser/Parser.cpp
+        Lexer/DOTGenerator.cpp
         GUI/ThemeUtility.cpp
         GUI/ParserTreeDialog.cpp
         GUI/include/ParserTreeDialog.hpp
@@ -54,6 +55,14 @@ set(HEADERS
         include/Lexer.hpp
         include/Token.hpp
         include/Parser.hpp
+        include/DOTGenerator.hpp
+        include/ASTNode.hpp
+        include/Expressions.hpp
+        include/Helpers.hpp
+        include/Literals.hpp
+        include/Statements.hpp
+        include/tempAST.hpp
+        include/UtilNodes.hpp
         GUI/include/ThemeUtility.hpp
         GUI/ParserTreeDialog.cpp
         GUI/include/ParserTreeDialog.hpp
