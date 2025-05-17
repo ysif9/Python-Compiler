@@ -2045,8 +2045,9 @@ void Parser::generateDotNode(shared_ptr<AstNode> node, string& output, int& node
     int currentId = nodeId++;
     string label = nodeTypeToString(node->type);
     if (!node->value.empty()) {
-        label += " \n " + node->value + "";
+        label += " \n ( Value: " + node->value + " )";
     }
+    label += "\n ( Line: " + to_string( node->token.line) + " )";
     output += "    node" + to_string(currentId) + " [label=\"" + label + "\"];\n";
 
     for (const auto& child : node->children) {
@@ -2110,7 +2111,7 @@ string Parser::nodeTypeToString(NodeType type) {
 string Parser::generateDot(shared_ptr<AstNode> root) {
     string output = "digraph AST {\n";
     output += "    rankdir=TB;\n"; // Top-to-bottom layout
-    output += "    node [shape=box];\n"; // Box shape for nodes
+    output += "    node [shape=box, style=filled, fillcolor=lightblue];\n"; // Box shape for nodes
 
     int nodeId = 0;
     vector<pair<int, int>> edges;
