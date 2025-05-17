@@ -2,13 +2,12 @@
 #include "Expressions.hpp"
 #include "Literals.hpp"
 #include "Statements.hpp"
-#include "Helpers.hpp"
+#include "Helpers.hpp" // Assuming UtilNodes.hpp might be included via here or directly if needed for other types
 
-#include <iostream> // For potential error reporting
-#include <sstream>  // For std::ostringstream
-#include <filesystem>
+#include <iostream>
+#include <sstream>
 
-DOTGenerator::DOTGenerator() : nodeIdCounter(0), currentNodeParentId("") {}
+DOTGenerator::DOTGenerator() : nodeIdCounter(0), currentNodeParentId(""), currentEdgeLabel("") {}
 
 void DOTGenerator::generate(ASTNode* root, const std::string& filename) {
     outFile.open(filename);
@@ -17,15 +16,16 @@ void DOTGenerator::generate(ASTNode* root, const std::string& filename) {
         return;
     }
 
-    nodeIdCounter = 0; // Reset for each generation
-    visitedNodeIds.clear(); // Clear cache for each generation
-    currentNodeParentId = ""; // Reset parent ID
+    nodeIdCounter = 0;
+    visitedNodeIds.clear();
+    currentNodeParentId = "";
+    currentEdgeLabel = ""; // Reset for each generation
 
     outFile << "digraph AST {" << std::endl;
     outFile << "  node [shape=box, style=filled, fillcolor=lightblue];" << std::endl;
 
     if (root) {
-        root->accept(this);
+        root->accept(this); // currentEdgeLabel is "" for the root
     }
 
     outFile << "}" << std::endl;
@@ -34,7 +34,7 @@ void DOTGenerator::generate(ASTNode* root, const std::string& filename) {
 
 std::string DOTGenerator::escapeDotString(const std::string& s) {
     std::string escaped;
-    escaped.reserve(s.length()); // Pre-allocate memory
+    escaped.reserve(s.length());
     for (char c : s) {
         switch (c) {
             case '"':  escaped += "\\\""; break;
@@ -52,7 +52,6 @@ std::string DOTGenerator::escapeDotString(const std::string& s) {
     return escaped;
 }
 
-// Robust getDotNodeId for nullptr safety
 std::string DOTGenerator::getDotNodeId(ASTNode* node, const std::string& labelDetails) {
     if (node && visitedNodeIds.count(node)) {
         return visitedNodeIds[node];
@@ -62,7 +61,7 @@ std::string DOTGenerator::getDotNodeId(ASTNode* node, const std::string& labelDe
     ss_node_id << "node" << nodeIdCounter++;
     std::string nodeId = ss_node_id.str();
 
-    if (node) { // Only add to map if node is not null
+    if (node) {
         visitedNodeIds[node] = nodeId;
     }
 
@@ -74,41 +73,47 @@ std::string DOTGenerator::getDotNodeId(ASTNode* node, const std::string& labelDe
         }
         label_ss << "\\n(line " << node->line << ")";
     } else {
-        // For nullptr (conceptual) nodes
         label_ss << (!labelDetails.empty() ? escapeDotString(labelDetails) : "ConceptualNode");
-        // Optionally, add a comment or fixed line number for conceptual nodes
-        // label_ss << "\\n(conceptual)";
     }
 
     outFile << "  \"" << nodeId << "\" [label=\"" << label_ss.str() << "\"];" << std::endl;
     return nodeId;
 }
 
-
-void DOTGenerator::linkToParent(const std::string& childId, const std::string& edgeLabel) {
-    if (!currentNodeParentId.empty() && !childId.empty()) {
+void DOTGenerator::linkToParent(const std::string& childId) {
+    if (!currentNodeParentId.empty() && !childId.empty() && currentNodeParentId != childId) { // Prevent self-loops
         outFile << "  \"" << currentNodeParentId << "\" -> \"" << childId << "\"";
-        if (!edgeLabel.empty()) {
-            outFile << " [label=\"" << escapeDotString(edgeLabel) << "\"]";
+        if (!currentEdgeLabel.empty()) {
+            outFile << " [label=\"" << escapeDotString(currentEdgeLabel) << "\"]";
         }
         outFile << ";" << std::endl;
     }
 }
 
-// --- Visit Methods Implementation ---
+// --- Visit Methods Implementation (Refactored) ---
 
 void DOTGenerator::visit(ProgramNode* node) {
     std::string selfId = getDotNodeId(node);
-    // ProgramNode is root, no linkToParent for itself.
+    // ProgramNode is root, no linkToParent(selfId) for itself from an outer parent.
+    // currentNodeParentId is "" and currentEdgeLabel is "" at this point.
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
+
     currentNodeParentId = selfId;
     for (size_t i = 0; i < node->statements.size(); ++i) {
         if (node->statements[i]) {
+            currentEdgeLabel = "stmt[" + std::to_string(i) + "]"; // Or simply "" if no specific label needed
             node->statements[i]->accept(this);
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
+
+// --- Leaf Nodes (Literals, Identifier) ---
+// These nodes typically don't have further children to recurse into *in the same way*,
+// so they don't need to manage oldParentId/oldEdgeLabel or set currentNodeParentId = selfId for sub-visits.
 
 void DOTGenerator::visit(NumberLiteralNode* node) {
     std::ostringstream details_ss;
@@ -120,7 +125,7 @@ void DOTGenerator::visit(NumberLiteralNode* node) {
 
 void DOTGenerator::visit(StringLiteralNode* node) {
     std::ostringstream details_ss;
-    details_ss << "value: " << node->value; // Assuming node->value is already string-safe for ostream
+    details_ss << "value: " << node->value;
     std::string selfId = getDotNodeId(node, details_ss.str());
     linkToParent(selfId);
 }
@@ -149,257 +154,232 @@ void DOTGenerator::visit(BytesLiteralNode* node) {
     linkToParent(selfId);
 }
 
-void DOTGenerator::visit(ListLiteralNode* node) {
-    std::string selfId = getDotNodeId(node);
-    linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
-    for (size_t i = 0; i < node->elements.size(); ++i) {
-        if (node->elements[i]) {
-            std::string elemId = getDotNodeId(node->elements[i].get());
-            linkToParent(elemId, "elem[" + std::to_string(i) + "]");
-
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = elemId;
-            node->elements[i]->accept(this);
-            currentNodeParentId = tempParent;
-        }
-    }
-    currentNodeParentId = oldParentId;
-}
-
-void DOTGenerator::visit(TupleLiteralNode* node) {
-    std::string selfId = getDotNodeId(node);
-    linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
-    for (size_t i = 0; i < node->elements.size(); ++i) {
-        if (node->elements[i]) {
-            std::string elemId = getDotNodeId(node->elements[i].get());
-            linkToParent(elemId, "elem[" + std::to_string(i) + "]");
-
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = elemId;
-            node->elements[i]->accept(this);
-            currentNodeParentId = tempParent;
-        }
-    }
-    currentNodeParentId = oldParentId;
-}
-
-void DOTGenerator::visit(DictLiteralNode* node) {
-    std::string selfId = getDotNodeId(node);
-    linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
-    for (size_t i = 0; i < node->keys.size(); ++i) {
-        std::ostringstream pair_label_ss;
-        pair_label_ss << "pair[" << i << "]";
-        std::string pairNodeId = getDotNodeId(nullptr, "key-value pair");
-        linkToParent(pairNodeId, pair_label_ss.str());
-
-        std::string tempParentForPair = currentNodeParentId;
-        currentNodeParentId = pairNodeId;
-
-        if (node->keys[i]) {
-            std::string keyId = getDotNodeId(node->keys[i].get());
-            linkToParent(keyId, "key");
-            std::string tempGrandParent = currentNodeParentId;
-            currentNodeParentId = keyId;
-            node->keys[i]->accept(this);
-            currentNodeParentId = tempGrandParent;
-        }
-        if (i < node->values.size() && node->values[i]) {
-            std::string valId = getDotNodeId(node->values[i].get());
-            linkToParent(valId, "value");
-            std::string tempGrandParent = currentNodeParentId;
-            currentNodeParentId = valId;
-            node->values[i]->accept(this);
-            currentNodeParentId = tempGrandParent;
-        }
-        currentNodeParentId = tempParentForPair;
-    }
-    currentNodeParentId = oldParentId;
-}
-
-void DOTGenerator::visit(SetLiteralNode* node) {
-    std::string selfId = getDotNodeId(node);
-    linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
-    for (size_t i = 0; i < node->elements.size(); ++i) {
-        if (node->elements[i]) {
-            std::string elemId = getDotNodeId(node->elements[i].get());
-            linkToParent(elemId, "elem[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = elemId;
-            node->elements[i]->accept(this);
-            currentNodeParentId = tempParent;
-        }
-    }
-    currentNodeParentId = oldParentId;
-}
-
 void DOTGenerator::visit(IdentifierNode* node) {
     std::string selfId = getDotNodeId(node, "name: " + node->name);
     linkToParent(selfId);
 }
 
+// --- Nodes with Children ---
+
+void DOTGenerator::visit(ListLiteralNode* node) {
+    std::string selfId = getDotNodeId(node);
+    linkToParent(selfId);
+
+    std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
+    currentNodeParentId = selfId;
+
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        if (node->elements[i]) {
+            currentEdgeLabel = "elem[" + std::to_string(i) + "]";
+            node->elements[i]->accept(this);
+        }
+    }
+    currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
+}
+
+void DOTGenerator::visit(TupleLiteralNode* node) {
+    std::string selfId = getDotNodeId(node);
+    linkToParent(selfId);
+
+    std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
+    currentNodeParentId = selfId;
+
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        if (node->elements[i]) {
+            currentEdgeLabel = "elem[" + std::to_string(i) + "]";
+            node->elements[i]->accept(this);
+        }
+    }
+    currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
+}
+
+void DOTGenerator::visit(DictLiteralNode* node) {
+    std::string selfId = getDotNodeId(node);
+    linkToParent(selfId);
+
+    std::string oldParentId = currentNodeParentId; // Parent of DictLiteralNode
+    std::string oldEdgeLabel = currentEdgeLabel;   // Edge label for DictLiteralNode
+
+    currentNodeParentId = selfId; // DictLiteralNode is now parent for "pair" conceptual nodes
+
+    for (size_t i = 0; i < node->keys.size(); ++i) {
+        std::string pairEdgeLabel = "pair[" + std::to_string(i) + "]";
+
+        // Create conceptual pair node
+        currentEdgeLabel = pairEdgeLabel; // Label for DictNode -> PairNode edge
+        std::string pairNodeId = getDotNodeId(nullptr, "key-value pair"); // Defines conceptual node
+        linkToParent(pairNodeId); // Links DictNode to PairNode
+
+        // Key and value are children of pairNodeId
+        std::string parentOfKeyVal = currentNodeParentId; // This is still DictNode (selfId)
+        std::string edgeLabelOfPair = currentEdgeLabel;   // This is pairEdgeLabel
+
+        currentNodeParentId = pairNodeId; // PairNode is parent for key/value
+
+        if (node->keys[i]) {
+            currentEdgeLabel = "key";
+            node->keys[i]->accept(this);
+        }
+        if (i < node->values.size() && node->values[i]) {
+            currentEdgeLabel = "value";
+            node->values[i]->accept(this);
+        }
+
+        currentNodeParentId = parentOfKeyVal; // Restore parent to DictNode
+        currentEdgeLabel = edgeLabelOfPair;   // Restore edge label (though it'll be overwritten or restored fully at end)
+    }
+    currentNodeParentId = oldParentId; // Restore original parent of DictLiteralNode
+    currentEdgeLabel = oldEdgeLabel;   // Restore original edge label for DictLiteralNode
+}
+
+void DOTGenerator::visit(SetLiteralNode* node) {
+    std::string selfId = getDotNodeId(node);
+    linkToParent(selfId);
+
+    std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
+    currentNodeParentId = selfId;
+
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        if (node->elements[i]) {
+            currentEdgeLabel = "elem[" + std::to_string(i) + "]";
+            node->elements[i]->accept(this);
+        }
+    }
+    currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
+}
+
 void DOTGenerator::visit(BinaryOpNode* node) {
     std::string selfId = getDotNodeId(node, "op: " + node->op.lexeme);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->left) {
-        std::string leftId = getDotNodeId(node->left.get());
-        linkToParent(leftId, "left");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = leftId;
+        currentEdgeLabel = "left";
         node->left->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->right) {
-        std::string rightId = getDotNodeId(node->right.get());
-        linkToParent(rightId, "right");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = rightId;
+        currentEdgeLabel = "right";
         node->right->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(UnaryOpNode* node) {
     std::string selfId = getDotNodeId(node, "op: " + node->op.lexeme);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->operand) {
-        std::string operandId = getDotNodeId(node->operand.get());
-        linkToParent(operandId, "operand");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = operandId;
+        currentEdgeLabel = "operand";
         node->operand->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(FunctionCallNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
 
     if (node->callee) {
-        std::string calleeId = getDotNodeId(node->callee.get());
-        linkToParent(calleeId, "callee");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = calleeId;
+        currentEdgeLabel = "callee";
         node->callee->accept(this);
-        currentNodeParentId = tempParent;
     }
     for (size_t i = 0; i < node->args.size(); ++i) {
         if (node->args[i]) {
-            std::string argId = getDotNodeId(node->args[i].get());
-            linkToParent(argId, "arg[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = argId;
+            currentEdgeLabel = "arg[" + std::to_string(i) + "]";
             node->args[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     for (size_t i = 0; i < node->keywords.size(); ++i) {
         if (node->keywords[i]) {
-            std::string kwId = getDotNodeId(node->keywords[i].get());
-            linkToParent(kwId, "kwarg[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = kwId;
+            currentEdgeLabel = "kwarg[" + std::to_string(i) + "]"; // kwarg itself is a KeywordArgNode
             node->keywords[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(AttributeAccessNode* node) {
-    std::string selfId = getDotNodeId(node);
+    std::string selfId = getDotNodeId(node); // Attribute name is part of IdentifierNode child
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->object) {
-        std::string objId = getDotNodeId(node->object.get());
-        linkToParent(objId, "object");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = objId;
+        currentEdgeLabel = "object";
         node->object->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->attribute_name) {
-        std::string attrId = getDotNodeId(node->attribute_name.get());
-        linkToParent(attrId, "attribute");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = attrId;
+    if (node->attribute_name) { // This is an IdentifierNode
+        currentEdgeLabel = "attribute";
         node->attribute_name->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(SubscriptionNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->object) {
-        std::string objId = getDotNodeId(node->object.get());
-        linkToParent(objId, "object");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = objId;
+        currentEdgeLabel = "object";
         node->object->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->slice_or_index) {
-        std::string sliceId = getDotNodeId(node->slice_or_index.get());
-        linkToParent(sliceId, "slice/index");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = sliceId;
+        currentEdgeLabel = "slice/index";
         node->slice_or_index->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(IfExpNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body (true_val)");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+
+    if (node->body) { // true value
+        currentEdgeLabel = "body (true_val)";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->condition) {
-        std::string condId = getDotNodeId(node->condition.get());
-        linkToParent(condId, "condition");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = condId;
+        currentEdgeLabel = "condition";
         node->condition->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->orelse) {
-        std::string orelseId = getDotNodeId(node->orelse.get());
-        linkToParent(orelseId, "orelse (false_val)");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = orelseId;
+    if (node->orelse) { // false value
+        currentEdgeLabel = "orelse (false_val)";
         node->orelse->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ComparisonNode* node) {
@@ -410,347 +390,279 @@ void DOTGenerator::visit(ComparisonNode* node) {
     }
     std::string selfId = getDotNodeId(node, ops_ss.str());
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
 
     if (node->left) {
-        std::string leftId = getDotNodeId(node->left.get());
-        linkToParent(leftId, "left");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = leftId;
+        currentEdgeLabel = "left";
         node->left->accept(this);
-        currentNodeParentId = tempParent;
     }
     for (size_t i = 0; i < node->comparators.size(); ++i) {
         if (node->comparators[i]) {
-            std::string compId = getDotNodeId(node->comparators[i].get());
-            linkToParent(compId, "comp[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = compId;
+            currentEdgeLabel = "comp[" + std::to_string(i) + "]";
             node->comparators[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(SliceNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->lower) {
-        std::string lowerId = getDotNodeId(node->lower.get());
-        linkToParent(lowerId, "lower");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = lowerId;
+        currentEdgeLabel = "lower";
         node->lower->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->upper) {
-        std::string upperId = getDotNodeId(node->upper.get());
-        linkToParent(upperId, "upper");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = upperId;
+        currentEdgeLabel = "upper";
         node->upper->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->step) {
-        std::string stepId = getDotNodeId(node->step.get());
-        linkToParent(stepId, "step");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = stepId;
+        currentEdgeLabel = "step";
         node->step->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(BlockNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    for (const auto& stmt : node->statements) {
-        if (stmt) {
-            std::string stmtId = getDotNodeId(stmt.get());
-            linkToParent(stmtId);
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = stmtId;
-            stmt->accept(this);
-            currentNodeParentId = tempParent;
+
+    for (size_t i = 0; i < node->statements.size(); ++i) {
+        if (node->statements[i]) {
+            currentEdgeLabel = "stmt[" + std::to_string(i) + "]";
+            node->statements[i]->accept(this);
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(AssignmentStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     for (size_t i = 0; i < node->targets.size(); ++i) {
         if (node->targets[i]) {
-            std::string targetId = getDotNodeId(node->targets[i].get());
-            linkToParent(targetId, "target["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = targetId;
+            currentEdgeLabel = "target[" + std::to_string(i) + "]";
             node->targets[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     if (node->value) {
-        std::string valueId = getDotNodeId(node->value.get());
-        linkToParent(valueId, "value");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = valueId;
+        currentEdgeLabel = "value";
         node->value->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ExpressionStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->expression) {
-        std::string exprId = getDotNodeId(node->expression.get());
-        linkToParent(exprId, "expr");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = exprId;
+        currentEdgeLabel = "expr";
         node->expression->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(IfStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
 
     if (node->condition) {
-        std::string condId = getDotNodeId(node->condition.get());
-        linkToParent(condId, "condition");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = condId;
+        currentEdgeLabel = "condition";
         node->condition->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->then_block) {
-        std::string thenId = getDotNodeId(node->then_block.get());
-        linkToParent(thenId, "then_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = thenId;
+        currentEdgeLabel = "then_block";
         node->then_block->accept(this);
-        currentNodeParentId = tempParent;
     }
 
     for(size_t i=0; i < node->elif_blocks.size(); ++i) {
         const auto& elif_pair = node->elif_blocks[i];
-        std::string elifNodeId = getDotNodeId(nullptr, "elif_clause");
-        linkToParent(elifNodeId, "elif["+std::to_string(i)+"]");
 
-        std::string tempParentIf = currentNodeParentId;
-        currentNodeParentId = elifNodeId;
+        currentEdgeLabel = "elif["+std::to_string(i)+"]";
+        std::string elifNodeId = getDotNodeId(nullptr, "elif_clause"); // Conceptual node for elif
+        linkToParent(elifNodeId); // Links IfStatementNode to elif_clause conceptual node
+
+        std::string parentOfElifParts = currentNodeParentId; // IfStatementNode
+        std::string edgeLabelOfElifClause = currentEdgeLabel; // "elif[i]"
+
+        currentNodeParentId = elifNodeId; // elif_clause is parent for its condition and block
+
         if(elif_pair.first) { // condition
-            std::string elifCondId = getDotNodeId(elif_pair.first.get());
-            linkToParent(elifCondId, "condition");
-            std::string tempParentElif = currentNodeParentId;
-            currentNodeParentId = elifCondId;
+            currentEdgeLabel = "condition";
             elif_pair.first->accept(this);
-            currentNodeParentId = tempParentElif;
         }
         if(elif_pair.second) { // block
-            std::string elifBlockId = getDotNodeId(elif_pair.second.get());
-            linkToParent(elifBlockId, "block");
-            std::string tempParentElif = currentNodeParentId;
-            currentNodeParentId = elifBlockId;
+            currentEdgeLabel = "block";
             elif_pair.second->accept(this);
-            currentNodeParentId = tempParentElif;
         }
-        currentNodeParentId = tempParentIf;
+        currentNodeParentId = parentOfElifParts; // Restore to IfStatementNode
+        currentEdgeLabel = edgeLabelOfElifClause; // Restore "elif[i]"
     }
 
     if (node->else_block) {
-        std::string elseId = getDotNodeId(node->else_block.get());
-        linkToParent(elseId, "else_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = elseId;
+        currentEdgeLabel = "else_block";
         node->else_block->accept(this);
-        currentNodeParentId = tempParent;
     }
-
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(WhileStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->condition) {
-        std::string condId = getDotNodeId(node->condition.get());
-        linkToParent(condId, "condition");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = condId;
+        currentEdgeLabel = "condition";
         node->condition->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+        currentEdgeLabel = "body";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->else_block) {
-        std::string elseId = getDotNodeId(node->else_block.get());
-        linkToParent(elseId, "else_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = elseId;
+        currentEdgeLabel = "else_block";
         node->else_block->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ForStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->target) {
-        std::string targetId = getDotNodeId(node->target.get());
-        linkToParent(targetId, "target");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = targetId;
+        currentEdgeLabel = "target";
         node->target->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->iterable) {
-        std::string iterId = getDotNodeId(node->iterable.get());
-        linkToParent(iterId, "iterable");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = iterId;
+        currentEdgeLabel = "iterable";
         node->iterable->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+        currentEdgeLabel = "body";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->else_block) {
-        std::string elseId = getDotNodeId(node->else_block.get());
-        linkToParent(elseId, "else_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = elseId;
+        currentEdgeLabel = "else_block";
         node->else_block->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(FunctionDefinitionNode* node) {
     std::string selfId = getDotNodeId(node, "name: " + (node->name ? node->name->name : "<?>"));
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    if (node->name) {
-        std::string nameId = getDotNodeId(node->name.get());
-        linkToParent(nameId, "name_node");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = nameId;
+
+    if (node->name) { // This is an IdentifierNode
+        currentEdgeLabel = "name_node";
         node->name->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->arguments_spec) {
-        std::string argsId = getDotNodeId(node->arguments_spec.get());
-        linkToParent(argsId, "arguments");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = argsId;
+        currentEdgeLabel = "arguments";
         node->arguments_spec->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+    if (node->body) { // This is a BlockNode
+        currentEdgeLabel = "body";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ClassDefinitionNode* node) {
     std::string selfId = getDotNodeId(node, "name: " + (node->name ? node->name->name : "<?>"));
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->name) {
-        std::string nameId = getDotNodeId(node->name.get());
-        linkToParent(nameId, "name_node");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = nameId;
+        currentEdgeLabel = "name_node";
         node->name->accept(this);
-        currentNodeParentId = tempParent;
     }
     for (size_t i = 0; i < node->base_classes.size(); ++i) {
         if (node->base_classes[i]) {
-            std::string baseId = getDotNodeId(node->base_classes[i].get());
-            linkToParent(baseId, "base[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = baseId;
+            currentEdgeLabel = "base[" + std::to_string(i) + "]";
             node->base_classes[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
-    for (size_t i = 0; i < node->keywords.size(); ++i) {
+    for (size_t i = 0; i < node->keywords.size(); ++i) { // These are KeywordArgNodes
         if (node->keywords[i]) {
-            std::string kwId = getDotNodeId(node->keywords[i].get());
-            linkToParent(kwId, "keyword[" + std::to_string(i) + "]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = kwId;
+            currentEdgeLabel = "keyword[" + std::to_string(i) + "]";
             node->keywords[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+        currentEdgeLabel = "body";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ReturnStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->value) {
-        std::string valId = getDotNodeId(node->value.get());
-        linkToParent(valId, "value");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = valId;
+        currentEdgeLabel = "value";
         node->value->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
+// Simple statement nodes (leaf-like in terms of DOT structure from their perspective)
 void DOTGenerator::visit(PassStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
@@ -767,21 +679,21 @@ void DOTGenerator::visit(ContinueStatementNode* node) {
 }
 
 void DOTGenerator::visit(ImportStatementNode* node) {
-    std::string selfId = getDotNodeId(node);
+    std::string selfId = getDotNodeId(node); // Names themselves are children
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    for (size_t i=0; i < node->names.size(); ++i) {
+
+    for (size_t i=0; i < node->names.size(); ++i) { // Names are NamedImportNode
         if (node->names[i]) {
-            std::string nameNodeId = getDotNodeId(node->names[i].get());
-            linkToParent(nameNodeId, "name["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = nameNodeId;
+            currentEdgeLabel = "name["+std::to_string(i)+"]";
             node->names[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ImportFromStatementNode* node) {
@@ -792,145 +704,125 @@ void DOTGenerator::visit(ImportFromStatementNode* node) {
 
     std::string selfId = getDotNodeId(node, details_ss.str());
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    for (size_t i=0; i < node->names.size(); ++i) {
+
+    for (size_t i=0; i < node->names.size(); ++i) { // Names are ImportNameNode
         if (node->names[i]) {
-            std::string nameNodeId = getDotNodeId(node->names[i].get());
-            linkToParent(nameNodeId, "name["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = nameNodeId;
+            currentEdgeLabel = "name["+std::to_string(i)+"]";
             node->names[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(GlobalStatementNode* node) {
-    std::string selfId = getDotNodeId(node);
+    std::string selfId = getDotNodeId(node); // Names are children (IdentifierNodes)
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     for (size_t i=0; i < node->names.size(); ++i) {
         if (node->names[i]) {
-            std::string nameId = getDotNodeId(node->names[i].get());
-            linkToParent(nameId, "name["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = nameId;
+            currentEdgeLabel = "name["+std::to_string(i)+"]";
             node->names[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(NonlocalStatementNode* node) {
-    std::string selfId = getDotNodeId(node);
+    std::string selfId = getDotNodeId(node); // Names are children (IdentifierNodes)
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     for (size_t i=0; i < node->names.size(); ++i) {
         if (node->names[i]) {
-            std::string nameId = getDotNodeId(node->names[i].get());
-            linkToParent(nameId, "name["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = nameId;
+            currentEdgeLabel = "name["+std::to_string(i)+"]";
             node->names[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(TryStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->try_block) {
-        std::string tryId = getDotNodeId(node->try_block.get());
-        linkToParent(tryId, "try_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = tryId;
+        currentEdgeLabel = "try_block";
         node->try_block->accept(this);
-        currentNodeParentId = tempParent;
     }
-    for (size_t i=0; i < node->handlers.size(); ++i) {
+    for (size_t i=0; i < node->handlers.size(); ++i) { // Handlers are ExceptionHandlerNode
         if (node->handlers[i]) {
-            std::string handlerId = getDotNodeId(node->handlers[i].get());
-            linkToParent(handlerId, "handler["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = handlerId;
+            currentEdgeLabel = "handler["+std::to_string(i)+"]";
             node->handlers[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
     if (node->else_block) {
-        std::string elseId = getDotNodeId(node->else_block.get());
-        linkToParent(elseId, "else_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = elseId;
+        currentEdgeLabel = "else_block";
         node->else_block->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->finally_block) {
-        std::string finallyId = getDotNodeId(node->finally_block.get());
-        linkToParent(finallyId, "finally_block");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = finallyId;
+        currentEdgeLabel = "finally_block";
         node->finally_block->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(RaiseStatementNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->exception) {
-        std::string excId = getDotNodeId(node->exception.get());
-        linkToParent(excId, "exception");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = excId;
+        currentEdgeLabel = "exception";
         node->exception->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->cause) {
-        std::string causeId = getDotNodeId(node->cause.get());
-        linkToParent(causeId, "cause");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = causeId;
+        currentEdgeLabel = "cause";
         node->cause->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(AugAssignNode* node) {
     std::string selfId = getDotNodeId(node, "op: " + node->op.lexeme);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->target) {
-        std::string targetId = getDotNodeId(node->target.get());
-        linkToParent(targetId, "target");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = targetId;
+        currentEdgeLabel = "target";
         node->target->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->value) {
-        std::string valueId = getDotNodeId(node->value.get());
-        linkToParent(valueId, "value");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = valueId;
+        currentEdgeLabel = "value";
         node->value->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 std::string DOTGenerator::paramKindToString(ParameterNode::Kind kind) {
@@ -947,146 +839,140 @@ void DOTGenerator::visit(ParameterNode* node) {
     details_ss << "name: " << node->arg_name << ", kind: " << paramKindToString(node->kind);
     std::string selfId = getDotNodeId(node, details_ss.str());
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
+
     if (node->default_value) {
-        std::string defaultId = getDotNodeId(node->default_value.get());
-        linkToParent(defaultId, "default_value");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = defaultId;
+        currentEdgeLabel = "default_value";
         node->default_value->accept(this);
-        currentNodeParentId = tempParent;
     }
+    // Annotation not shown in this example, but if present, would be another child.
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(ArgumentsNode* node) {
     std::string selfId = getDotNodeId(node);
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    for (size_t i = 0; i < node->args.size(); ++i) {
+
+    for (size_t i = 0; i < node->args.size(); ++i) { // These are ParameterNode
         if (node->args[i]) {
-            std::string argId = getDotNodeId(node->args[i].get());
-            linkToParent(argId, "param["+std::to_string(i)+"]");
-            std::string tempParent = currentNodeParentId;
-            currentNodeParentId = argId;
+            currentEdgeLabel = "param["+std::to_string(i)+"]";
             node->args[i]->accept(this);
-            currentNodeParentId = tempParent;
         }
     }
-    if (node->vararg) {
-        std::string varargId = getDotNodeId(node->vararg.get());
-        linkToParent(varargId, "vararg (*args)");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = varargId;
+    if (node->vararg) { // ParameterNode
+        currentEdgeLabel = "vararg (*args)";
         node->vararg->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->kwarg) {
-        std::string kwargId = getDotNodeId(node->kwarg.get());
-        linkToParent(kwargId, "kwarg (**kwargs)");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = kwargId;
+    // kwonlyargs not shown, but would be similar to args
+    if (node->kwarg) { // ParameterNode
+        currentEdgeLabel = "kwarg (**kwargs)";
         node->kwarg->accept(this);
-        currentNodeParentId = tempParent;
     }
+    // defaults and kw_defaults link ParameterNodes to their default values,
+    // which is handled within ParameterNode::visit if it has a default_value.
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(KeywordArgNode* node) {
+    // KeywordArgNode's name is an IdentifierNode, value is an ExpressionNode
     std::string selfId = getDotNodeId(node, "name: " + (node->arg_name ? node->arg_name->name : "<?>"));
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    if (node->arg_name) {
-        std::string nameId = getDotNodeId(node->arg_name.get());
-        linkToParent(nameId, "arg_name_node");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = nameId;
+
+    if (node->arg_name) { // This is an IdentifierNode
+        currentEdgeLabel = "arg_name_node";
         node->arg_name->accept(this);
-        currentNodeParentId = tempParent;
     }
     if (node->value) {
-        std::string valueId = getDotNodeId(node->value.get());
-        linkToParent(valueId, "value");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = valueId;
+        currentEdgeLabel = "value";
         node->value->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }
 
 void DOTGenerator::visit(NamedImportNode* node) {
+    // Represents 'module' or 'module.submodule' [as alias]
     std::string details = "path: " + node->module_path_str;
     if (node->alias) details += ", as: " + node->alias->name;
     std::string selfId = getDotNodeId(node, details);
     linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
+
+    // The alias (IdentifierNode) is conceptually part of this node's definition,
+    // usually not drawn as a separate child unless it had complex structure.
+    // If you wanted to show the alias IdentifierNode as a distinct child:
+    /*
     if (node->alias) {
-        // The alias is an IdentifierNode. Its details are already part of the NamedImportNode's label.
-        // If IdentifierNode itself had complex children or required its own separate box for more detail,
-        // you might get its ID and call accept on it.
-        // However, IdentifierNode's visit method in this generator only creates a label and links to parent.
-        // To show it as a distinct child node graphically (even if simple):
-        // std::string aliasId = getDotNodeId(node->alias.get());
-        // linkToParent(aliasId, "alias_node");
-        // node->alias->accept(this); // This would draw the IdentifierNode box and link it
+        std::string oldParentId = currentNodeParentId;
+        std::string oldEdgeLabel = currentEdgeLabel;
+        currentNodeParentId = selfId;
+        currentEdgeLabel = "alias_node";
+        node->alias->accept(this);
+        currentNodeParentId = oldParentId;
+        currentEdgeLabel = oldEdgeLabel;
     }
-    currentNodeParentId = oldParentId;
+    */
 }
 
 void DOTGenerator::visit(ImportNameNode* node) {
+    // Represents 'name' [as alias] in 'from module import name1 as alias1, name2'
     std::string details = "name: " + node->name_str;
     if (node->alias) details += ", as: " + node->alias->name;
     std::string selfId = getDotNodeId(node, details);
     linkToParent(selfId);
-    std::string oldParentId = currentNodeParentId;
-    currentNodeParentId = selfId;
-    // Similar to NamedImportNode, alias details are in the label.
-    // If separate node box for alias is desired:
-    // if (node->alias) {
-    //     std::string aliasId = getDotNodeId(node->alias.get());
-    //     linkToParent(aliasId, "alias_node");
-    //     node->alias->accept(this);
-    // }
-    currentNodeParentId = oldParentId;
+
+    // Similar to NamedImportNode, alias is part of the definition.
+    // If alias were to be a distinct child node:
+    /*
+    if (node->alias) {
+        std::string oldParentId = currentNodeParentId;
+        std::string oldEdgeLabel = currentEdgeLabel;
+        currentNodeParentId = selfId;
+        currentEdgeLabel = "alias_node";
+        node->alias->accept(this);
+        currentNodeParentId = oldParentId;
+        currentEdgeLabel = oldEdgeLabel;
+    }
+    */
 }
 
 void DOTGenerator::visit(ExceptionHandlerNode* node) {
     std::ostringstream details_ss;
-    if (node->type) details_ss << "type: (see child)";
-    if (node->name) details_ss << (node->type ? ", " : "") << "as: " << node->name->name;
+    bool has_details = false;
+    if (node->type) { details_ss << "type: (see child)"; has_details = true; }
+    if (node->name) { details_ss << (has_details ? ", " : "") << "as: " << node->name->name; }
 
     std::string selfId = getDotNodeId(node, details_ss.str());
     linkToParent(selfId);
+
     std::string oldParentId = currentNodeParentId;
+    std::string oldEdgeLabel = currentEdgeLabel;
     currentNodeParentId = selfId;
-    if (node->type) {
-        std::string typeId = getDotNodeId(node->type.get());
-        linkToParent(typeId, "type_expr");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = typeId;
+
+    if (node->type) { // ExpressionNode for exception type
+        currentEdgeLabel = "type_expr";
         node->type->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->name) {
-        std::string nameId = getDotNodeId(node->name.get());
-        linkToParent(nameId, "name_node (as)");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = nameId;
+    if (node->name) { // IdentifierNode for 'as name'
+        currentEdgeLabel = "name_node (as)";
         node->name->accept(this);
-        currentNodeParentId = tempParent;
     }
-    if (node->body) {
-        std::string bodyId = getDotNodeId(node->body.get());
-        linkToParent(bodyId, "body");
-        std::string tempParent = currentNodeParentId;
-        currentNodeParentId = bodyId;
+    if (node->body) { // BlockNode for the handler body
+        currentEdgeLabel = "body";
         node->body->accept(this);
-        currentNodeParentId = tempParent;
     }
     currentNodeParentId = oldParentId;
+    currentEdgeLabel = oldEdgeLabel;
 }

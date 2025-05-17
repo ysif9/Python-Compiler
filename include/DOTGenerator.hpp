@@ -1,20 +1,19 @@
 #pragma once
 
-#include "ASTNode.hpp" // For ASTVisitor and ASTNode base
-#include "UtilNodes.hpp" // <<<< ADDED for ParameterNode::Kind
+#include "ASTNode.hpp"     // For ASTVisitor and ASTNode base
+#include "UtilNodes.hpp"   // For ParameterNode::Kind
 
 #include <fstream>
 #include <string>
-#include <sstream>       // For node ID generation and string building
-#include <unordered_map> // To store generated node IDs
-
+#include <sstream>
+#include <unordered_map>
 
 class DOTGenerator : public ASTVisitor {
 public:
     DOTGenerator();
     void generate(ASTNode* root, const std::string& filename);
 
-    // Visit methods (declarations are the same as before)
+    // Visit methods (declarations remain the same)
     void visit(NumberLiteralNode* node) override;
     void visit(StringLiteralNode* node) override;
     void visit(BooleanLiteralNode* node) override;
@@ -65,10 +64,12 @@ private:
     std::ofstream outFile;
     int nodeIdCounter;
     std::string currentNodeParentId;
+    std::string currentEdgeLabel; // <<< ADDED
     std::unordered_map<ASTNode*, std::string> visitedNodeIds;
 
     std::string getDotNodeId(ASTNode* node, const std::string& labelDetails = "");
-    void linkToParent(const std::string& childId, const std::string& edgeLabel = "");
+    // void linkToParent(const std::string& childId, const std::string& edgeLabel = ""); // <<< MODIFIED
+    void linkToParent(const std::string& childId); // <<< MODIFIED
     std::string escapeDotString(const std::string& s);
-    std::string paramKindToString(ParameterNode::Kind kind); // Declaration is now valid
+    std::string paramKindToString(ParameterNode::Kind kind);
 };
